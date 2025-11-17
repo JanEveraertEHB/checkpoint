@@ -13,9 +13,9 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      # Redirect HTTP to HTTPS
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # Redirect HTTP to HTTPS (uncomment after SSL is working)
+      # - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      # - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
     ports:
       - "80:80"
       - "443:443"
@@ -39,6 +39,10 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      # HTTP router (for initial setup and ACME challenge)
+      - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend-http.entrypoints=web"
+      # HTTPS router
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
@@ -67,6 +71,10 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      # HTTP router (for initial setup and ACME challenge)
+      - "traefik.http.routers.api-http.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.api-http.entrypoints=web"
+      # HTTPS router
       - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
