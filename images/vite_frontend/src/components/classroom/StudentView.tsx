@@ -1,4 +1,4 @@
-import { FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { Alert, Timeline, Button } from '../common'
 import { NextCheckpointCard, CheckpointBadges } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'

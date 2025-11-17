@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { TimelineItem as TimelineItemType, Feedback, Checkpoint } from '../../types'
 
 interface TimelineProps {

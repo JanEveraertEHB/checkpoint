@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Button, Alert, Timeline } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
@@ -10,7 +11,6 @@ interface TeacherViewProps {
   classroom: Classroom
   checkpoints: Checkpoint[]
   studentProgress: Checkpoint[]
-  feedback: Feedback[]
   selectedStudent: Student | null
   inviteCode: string
   showInviteCode: boolean
@@ -46,7 +46,6 @@ export default function TeacherView({
   classroom,
   checkpoints,
   studentProgress,
-  feedback,
   selectedStudent,
   inviteCode,
   showInviteCode,

@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useClassroom, useCheckpoints, useFeedback, useTimeline } from '../hooks'
-import { Loading, Button } from '../components/common'
+import { Loading } from '../components/common'
 import { ClassroomHeader, TeacherView, StudentView } from '../components/classroom'
 import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom } from '../services/api'
 import type { Student } from '../types'
 
 export default function ClassroomDetail() {
   const { uuid } = useParams<{ uuid: string }>()
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [newFeedback, setNewFeedback] = useState('')
@@ -31,7 +30,6 @@ export default function ClassroomDetail() {
     studentProgress,
     nextCheckpoint,
     error: checkpointError,
-    setError: setCheckpointError,
     fetchCheckpoints,
     fetchStudentProgress,
     addCheckpoint,
@@ -45,7 +43,6 @@ export default function ClassroomDetail() {
     editFeedbackContent,
     uploadingImagesFeedbackUuid,
     error: feedbackError,
-    setError: setFeedbackError,
     setEditFeedbackContent,
     setUploadingImagesFeedbackUuid,
     fetchMyFeedback,
@@ -232,7 +229,6 @@ export default function ClassroomDetail() {
               classroom={classroom}
               checkpoints={checkpoints}
               studentProgress={studentProgress}
-              feedback={feedback}
               selectedStudent={selectedStudent}
               inviteCode={inviteCode}
               showInviteCode={showInviteCode}

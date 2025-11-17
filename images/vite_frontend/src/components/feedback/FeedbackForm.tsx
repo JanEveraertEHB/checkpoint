@@ -1,4 +1,4 @@
-import { FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { Button, RichTextEditor } from '../common'
 
 interface FeedbackFormProps {
