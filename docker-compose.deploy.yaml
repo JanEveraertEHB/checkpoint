@@ -1,0 +1,95 @@
+
+services:
+
+  static_frontend:
+    build: ./images/static_frontend
+    image: crshlab/static_frontend:latest
+    ports:
+      - 8080:80
+    networks:
+      - backend
+    volumes:
+      -  ./images/student/src/:/usr/share/nginx/html/
+    environment:
+      API_ENDPOINT: 
+      
+  api:
+    build:
+      context: ./images/api
+      dockerfile: Dockerfile
+    image: crshlab/api:latest
+    container_name: "api"
+    ports:
+      - 3000:3000
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      TOKEN_ENCRYPTION: ${TOKEN_ENCRYPTION}
+    volumes:
+      - ./images/api/src:/usr/app/src
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+
+  # Frontend
+  frontend:
+    # build:
+    #   context: ./vite_frontend
+    #   dockerfile: Dockerfile
+    # container_name: vite_frontend
+    # ports:
+    #   - "80:80"
+    # depends_on:
+    #   - api
+    # networks:
+    #   - backend
+    # restart: unless-stopped
+    build:
+      context: ./images/vite_frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    volumes:
+      - ./images/vite_frontend/src:/app/src
+      - ./images/vite_frontend/public:/app/public
+      - ./images/vite_frontend/index.html:/app/index.html
+      - ./images/vite_frontend/vite.config.ts:/app/vite.config.ts
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - backend
+    restart: unless-stopped
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  db:
+    image: "postgres:latest"
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE}
+      POSTGRES_DB: ${POSTGRES_DATABASE}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./_volumes/pg:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DATABASE} -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+
+networks:
+  backend:
+    # Specify driver options
+    driver: bridge

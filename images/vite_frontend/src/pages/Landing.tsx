@@ -7,7 +7,8 @@ export default function Landing() {
         <div className="twelve columns">
           <h1>Checkpoints to Learn</h1>
           <p>Your workspace for learning, feedback, and progress tracking.</p>
-        </div>
+                  <Link className="button button-primary" to="/login">Get Started</Link>
+</div>
       </header>
 
       <section className="row" style={{ marginTop: '3rem' }}>
