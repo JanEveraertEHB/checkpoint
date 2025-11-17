@@ -515,28 +515,36 @@ export default function ClassroomDetail() {
               {checkpoints.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
                   <h4>Checkpoints</h4>
-                  <ol>
-                    {checkpoints.map((cp) => (
-                      <li key={cp.uuid} style={{ marginBottom: '10px' }}>
-                        <strong>{cp.name}</strong>
-                        {cp.description && <span> - {cp.description}</span>}
-                        <button
-                          onClick={() => handleDeleteCheckpoint(cp.uuid)}
-                          style={{
-                            marginLeft: '10px',
-                            padding: '2px 8px',
-                            fontSize: '0.8rem',
-                            backgroundColor: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ol>
+                  <table className="u-full-width">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {checkpoints.map((cp) => (
+                        <tr key={cp.uuid}>
+                          <td>{cp.order_index}</td>
+                          <td><strong>{cp.name}</strong></td>
+                          <td>{cp.description || '-'}</td>
+                          <td>
+                            <a
+                              onClick={() => handleDeleteCheckpoint(cp.uuid)}
+                              style={{
+                                color: '#dc3545',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Remove
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
