@@ -60,7 +60,7 @@ services:
       - ./images/vite_frontend/vite.config.ts:/app/vite.config.ts
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - api
     networks:
