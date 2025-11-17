@@ -42,6 +42,7 @@ services:
       # HTTP router (for initial setup and ACME challenge)
       - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
+      - "traefik.http.routers.frontend-http.service=frontend"
       # HTTPS router
       - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
@@ -74,6 +75,7 @@ services:
       # HTTP router (for initial setup and ACME challenge)
       - "traefik.http.routers.api-http.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api-http.entrypoints=web"
+      - "traefik.http.routers.api-http.service=api"
       # HTTPS router
       - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
