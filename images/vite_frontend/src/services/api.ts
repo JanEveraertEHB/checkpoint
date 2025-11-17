@@ -49,6 +49,15 @@ export const joinClassroom = (invite_code: string) =>
 export const getInviteCode = (uuid: string) =>
   api.get<{ invite_code: string }>(`/classrooms/${uuid}/invite`)
 
+export const removeStudentFromClassroom = (classroom_uuid: string, student_uuid: string) =>
+  api.delete(`/classrooms/${classroom_uuid}/students/${student_uuid}`)
+
+export const leaveClassroom = (classroom_uuid: string) =>
+  api.post(`/classrooms/${classroom_uuid}/leave`)
+
+export const completeClassroom = (classroom_uuid: string) =>
+  api.post(`/classrooms/${classroom_uuid}/complete`)
+
 // Feedback APIs
 export const getFeedbackForStudent = (classroom_uuid: string, student_uuid: string) =>
   api.get<Feedback[]>(`/feedback/classroom/${classroom_uuid}/student/${student_uuid}`)

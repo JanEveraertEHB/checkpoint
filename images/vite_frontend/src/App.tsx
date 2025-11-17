@@ -6,7 +6,6 @@ import Register from './pages/Register'
 import Home from './pages/Home'
 import ClassroomDetail from './pages/ClassroomDetail'
 import JoinClassroom from './pages/JoinClassroom'
-import './index.css'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

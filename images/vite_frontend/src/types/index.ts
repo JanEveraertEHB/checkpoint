@@ -20,6 +20,8 @@ export interface Classroom {
   teacher_first_name: string
   teacher_last_name: string
   students?: Student[]
+  completed?: boolean
+  completed_at?: string | null
 }
 
 export interface Student {
@@ -27,6 +29,7 @@ export interface Student {
   first_name: string
   last_name: string
   email: string
+  active?: boolean
 }
 
 export interface FeedbackImage {

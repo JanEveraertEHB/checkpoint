@@ -145,30 +145,97 @@ export default function Home() {
           {classrooms.length === 0 ? (
             <p>No classrooms yet. Create one or join with an invite code.</p>
           ) : (
-            <table className="u-full-width">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Academic Year</th>
-                  <th>Role</th>
-                  <th>Teacher</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {classrooms.map((classroom) => (
-                  <tr key={classroom.uuid}>
-                    <td>{classroom.name}</td>
-                    <td>{classroom.academic_year}</td>
-                    <td>{classroom.role}</td>
-                    <td>{classroom.teacher_first_name} {classroom.teacher_last_name}</td>
-                    <td>
-                      <Link to={`/classroom/${classroom.uuid}`}>View</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {classrooms.filter(c => c.role === 'teacher' && !c.completed).length > 0 && (
+                <div style={{ marginBottom: '30px' }}>
+                  <h4>Classrooms I Teach</h4>
+                  <table className="u-full-width">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Academic Year</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classrooms
+                        .filter((classroom) => classroom.role === 'teacher' && !classroom.completed)
+                        .map((classroom) => (
+                          <tr key={classroom.uuid}>
+                            <td>{classroom.name}</td>
+                            <td>{classroom.academic_year}</td>
+                            <td>
+                              <Link to={`/classroom/${classroom.uuid}`}>View</Link>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {classrooms.filter(c => c.role === 'student' && !c.completed).length > 0 && (
+                <div style={{ marginBottom: '30px' }}>
+                  <h4>Classrooms I Attend</h4>
+                  <table className="u-full-width">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Academic Year</th>
+                        <th>Teacher</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classrooms
+                        .filter((classroom) => classroom.role === 'student' && !classroom.completed)
+                        .map((classroom) => (
+                          <tr key={classroom.uuid}>
+                            <td>{classroom.name}</td>
+                            <td>{classroom.academic_year}</td>
+                            <td>{classroom.teacher_first_name} {classroom.teacher_last_name}</td>
+                            <td>
+                              <Link to={`/classroom/${classroom.uuid}`}>View</Link>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {classrooms.filter(c => c.completed).length > 0 && (
+                <div style={{ marginBottom: '30px' }}>
+                  <h4>Completed Classrooms</h4>
+                  <table className="u-full-width">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Academic Year</th>
+                        <th>Role</th>
+                        <th>Teacher</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classrooms
+                        .filter((classroom) => classroom.completed)
+                        .map((classroom) => (
+                          <tr key={classroom.uuid} style={{ opacity: 0.7 }}>
+                            <td>{classroom.name}</td>
+                            <td>{classroom.academic_year}</td>
+                            <td>{classroom.role}</td>
+                            <td>{classroom.teacher_first_name} {classroom.teacher_last_name}</td>
+                            <td>
+                              <Link to={`/classroom/${classroom.uuid}`}>View</Link>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -145,6 +145,15 @@ router.post('/', decodeToken, async (req, res) => {
     const userUuid = req.user.uuid;
     const { classroom_uuid, student_uuid, content } = req.body;
 
+    // Check if classroom is completed
+    const classroom = await pg.get()('classrooms')
+      .where({ uuid: classroom_uuid })
+      .first();
+
+    if (classroom && classroom.completed) {
+      return res.status(403).send({ message: "Cannot add feedback to a completed classroom" });
+    }
+
     // Check membership
     const membership = await pg.get()('classroom_members')
       .where({ classroom_uuid, user_uuid: userUuid })

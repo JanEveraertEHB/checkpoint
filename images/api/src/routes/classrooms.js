@@ -61,7 +61,7 @@ router.get('/:uuid', decodeToken, async (req, res) => {
       return res.status(404).send({ message: "Classroom not found" });
     }
 
-    // Get all students if user is teacher
+    // Get all students if user is teacher (including inactive ones)
     let students = [];
     if (membership.role === 'teacher') {
       students = await pg.get()('classroom_members')
@@ -74,7 +74,8 @@ router.get('/:uuid', decodeToken, async (req, res) => {
           'users.uuid',
           'users.first_name',
           'users.last_name',
-          'users.email'
+          'users.email',
+          'classroom_members.active'
         );
     }
 
@@ -189,6 +190,137 @@ router.get('/:uuid/invite', decodeToken, async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(500).send({ message: "Error getting invite code" });
+  }
+});
+
+// Remove student from classroom (teacher only) - sets active to false
+router.delete('/:uuid/students/:student_uuid', decodeToken, async (req, res) => {
+  try {
+    const classroomUuid = req.params.uuid;
+    const studentUuid = req.params.student_uuid;
+    const userUuid = req.user.uuid;
+
+    // Check if user is teacher
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Only teachers can remove students" });
+    }
+
+    // Check if student is a member
+    const studentMembership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid, role: 'student' })
+      .first();
+
+    if (!studentMembership) {
+      return res.status(404).send({ message: "Student not found in this classroom" });
+    }
+
+    // Check if student has feedback
+    const hasFeedback = await pg.get()('feedback')
+      .where({ classroom_uuid: classroomUuid, student_uuid: studentUuid })
+      .first();
+
+    if (hasFeedback) {
+      // Set active to false instead of deleting
+      await pg.get()('classroom_members')
+        .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid })
+        .update({ active: false });
+      res.status(200).send({ message: "Student deactivated (has feedback history)", active: false });
+    } else {
+      // Delete the membership completely
+      await pg.get()('classroom_members')
+        .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid })
+        .delete();
+      res.status(200).send({ message: "Student removed from classroom", deleted: true });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error removing student" });
+  }
+});
+
+// Leave classroom (student only)
+router.post('/:uuid/leave', decodeToken, async (req, res) => {
+  try {
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    // Check if user is student
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'student' })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Only students can leave classrooms" });
+    }
+
+    // Check if student has feedback
+    const hasFeedback = await pg.get()('feedback')
+      .where({ classroom_uuid: classroomUuid, student_uuid: userUuid })
+      .first();
+
+    if (hasFeedback) {
+      // Set active to false instead of deleting
+      await pg.get()('classroom_members')
+        .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
+        .update({ active: false });
+      res.status(200).send({ message: "Left classroom (feedback history preserved)", active: false });
+    } else {
+      // Delete the membership completely
+      await pg.get()('classroom_members')
+        .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
+        .delete();
+      res.status(200).send({ message: "Left classroom", deleted: true });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error leaving classroom" });
+  }
+});
+
+// Mark classroom as completed (teacher only)
+router.post('/:uuid/complete', decodeToken, async (req, res) => {
+  try {
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    // Check if user is teacher
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Only teachers can complete classrooms" });
+    }
+
+    // Check if already completed
+    const classroom = await pg.get()('classrooms')
+      .where({ uuid: classroomUuid })
+      .first();
+
+    if (!classroom) {
+      return res.status(404).send({ message: "Classroom not found" });
+    }
+
+    if (classroom.completed) {
+      return res.status(400).send({ message: "Classroom is already completed" });
+    }
+
+    // Mark as completed
+    await pg.get()('classrooms')
+      .where({ uuid: classroomUuid })
+      .update({
+        completed: true,
+        completed_at: pg.get().fn.now()
+      });
+
+    res.status(200).send({ message: "Classroom marked as completed", completed: true });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error completing classroom" });
   }
 });
 
