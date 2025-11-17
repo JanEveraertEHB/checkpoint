@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Stack+Sans+Headline:wght@200..700&family=Stack+Sans+Text:wght@200..700&display=swap');
+body {
+	font-family: "Stack Sans Text", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+
+a {
+	color: #000;
+	text-decoration: underline;
+}
+a:hover:not(.button) {
+	background: yellow;
+	color: #000;
+}
+.button, button, input[type="submit"], input[type="reset"], input[type="button"] {
+	border-radius: 0px;
+	border: 1px #aaa solid ; 
+}
+h2.title {
+	font-size: 8rem;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  font-style: normal;
+}
+h1, h2, h3 {
+	font-family: "Stack Sans Headline", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+	text-transform: uppercase;
+}
+
+
+.button-primary {
+	background-color: #000 !important;
+	color: #fff;
+	border: 0px solid !important;
+}

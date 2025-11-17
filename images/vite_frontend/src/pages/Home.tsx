@@ -1,0 +1,177 @@
+import { useState, useEffect, FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { getClassrooms, createClassroom, joinClassroom } from '../services/api'
+import type { Classroom } from '../types'
+
+export default function Home() {
+  const { user, logout } = useAuth()
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showJoinForm, setShowJoinForm] = useState(false)
+  const [name, setName] = useState('')
+  const [academicYear, setAcademicYear] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchClassrooms()
+  }, [])
+
+  const fetchClassrooms = async () => {
+    try {
+      const response = await getClassrooms()
+      setClassrooms(response.data)
+    } catch (err) {
+      console.error('Error fetching classrooms:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateClassroom = async (e: FormEvent) => {
+    e.preventDefault()
+    setError('')
+    try {
+      await createClassroom(name, academicYear)
+      setName('')
+      setAcademicYear('')
+      setShowCreateForm(false)
+      fetchClassrooms()
+    } catch (err) {
+      setError('Failed to create classroom')
+    }
+  }
+
+  const handleJoinClassroom = async (e: FormEvent) => {
+    e.preventDefault()
+    setError('')
+    try {
+      await joinClassroom(inviteCode)
+      setInviteCode('')
+      setShowJoinForm(false)
+      fetchClassrooms()
+    } catch (err) {
+      setError('Invalid invite code or already a member')
+    }
+  }
+
+  if (loading) {
+    return <div className="container"><p>Loading...</p></div>
+  }
+
+  return (
+    <div className="container">
+      <div className="row">
+        <div className="twelve columns">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>My Classrooms</h2>
+            <div>
+              <span style={{ marginRight: '10px' }}>
+                Welcome, {user?.first_name} {user?.last_name}
+              </span>
+              <button onClick={logout}>Logout</button>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <button
+              className="button-primary"
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              style={{ marginRight: '10px' }}
+            >
+              Create Classroom
+            </button>
+            <button onClick={() => setShowJoinForm(!showJoinForm)}>
+              Join Classroom
+            </button>
+          </div>
+
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+
+          {showCreateForm && (
+            <div style={{ marginBottom: '20px', padding: '20px', border: '1px solid #ddd' }}>
+              <h4>Create New Classroom</h4>
+              <form onSubmit={handleCreateClassroom}>
+                <label htmlFor="name">Classroom Name</label>
+                <input
+                  className="u-full-width"
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+                <label htmlFor="academicYear">Academic Year</label>
+                <input
+                  className="u-full-width"
+                  type="text"
+                  id="academicYear"
+                  placeholder="e.g., 2024-2025"
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  required
+                />
+                <button className="button-primary" type="submit">Create</button>
+                <button type="button" onClick={() => setShowCreateForm(false)} style={{ marginLeft: '10px' }}>
+                  Cancel
+                </button>
+              </form>
+            </div>
+          )}
+
+          {showJoinForm && (
+            <div style={{ marginBottom: '20px', padding: '20px', border: '1px solid #ddd' }}>
+              <h4>Join Classroom</h4>
+              <form onSubmit={handleJoinClassroom}>
+                <label htmlFor="inviteCode">Invite Code</label>
+                <input
+                  className="u-full-width"
+                  type="text"
+                  id="inviteCode"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  required
+                />
+                <button className="button-primary" type="submit">Join</button>
+                <button type="button" onClick={() => setShowJoinForm(false)} style={{ marginLeft: '10px' }}>
+                  Cancel
+                </button>
+              </form>
+            </div>
+          )}
+
+          {classrooms.length === 0 ? (
+            <p>No classrooms yet. Create one or join with an invite code.</p>
+          ) : (
+            <table className="u-full-width">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Academic Year</th>
+                  <th>Role</th>
+                  <th>Teacher</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {classrooms.map((classroom) => (
+                  <tr key={classroom.uuid}>
+                    <td>{classroom.name}</td>
+                    <td>{classroom.academic_year}</td>
+                    <td>{classroom.role}</td>
+                    <td>{classroom.teacher_first_name} {classroom.teacher_last_name}</td>
+                    <td>
+                      <Link to={`/classroom/${classroom.uuid}`}>View</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

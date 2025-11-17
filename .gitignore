@@ -1,0 +1,11 @@
+_volumes/
+**/.DS_Store
+**/node_modules/
+images/student/out/*
+images/libretranslate/
+images/ollama/
+images/whisper/
+images/face_recognition/faces
+images/api/uploads/*
+!images/api/uploads/.gitkeep
+.env

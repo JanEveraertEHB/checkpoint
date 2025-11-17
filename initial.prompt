@@ -1,0 +1,21 @@
+I want to create a web application that does the followin:
+
+Here are the user stories:
+* As a user, I can register with my full name, email, and password
+* As a user, I can log in
+* As a user, I can create a new classroom, giving it a name, and academic year
+* As a user, I can send create a unique link to invite others to join the classroom
+* As a user, when I use an invite link, I can join a classroom as a student
+* As a user, if i created a classroom, I am the teacher, and invitees are the students
+* As a user, on my homepage I see a list of all the classrooms I created and joined
+* As a user, I can select a classroom and view details
+* As a student, when viewing a classroom, I can see a timeline of all feedback I have received in this class
+* As a teacher, I can see all the students in a classroom, and can select a student
+* As a teacher,  when viewing a classroom, I can add feedback for a student
+* As a student,  when viewing a classroom, I can add feedback received
+* As a student,  when viewing a classroom, I can only see my own feedback
+
+
+style everything using the example and reference in the docs/style folder.
+Use the vite_frontend for the frontend
+Use the API as a base to create all the necessary routes
