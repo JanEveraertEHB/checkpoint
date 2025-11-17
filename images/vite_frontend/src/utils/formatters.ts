@@ -9,7 +9,10 @@ export const formatDate = (dateString: string): string => {
 }
 
 export const getImageUrl = (filename: string): string => {
-  return `/uploads/${filename}`
+  const apiUrl = import.meta.env.VITE_API_URL || '/api'
+  // Remove /api suffix if present to get base URL
+  const baseUrl = apiUrl.replace(/\/api\/?$/, '')
+  return `${baseUrl}/uploads/${filename}`
 }
 
 export const stripHtmlTags = (html: string): string => {
