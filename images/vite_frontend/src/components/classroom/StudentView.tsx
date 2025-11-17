@@ -14,6 +14,7 @@ interface StudentViewProps {
   uploadingImagesFeedbackUuid: string | null
   error: string
   isCompleted: boolean
+  isActive: boolean
   onNewFeedbackChange: (value: string) => void
   onAddFeedback: () => Promise<void>
   onStartEditFeedback: (fb: Feedback) => void
@@ -28,6 +29,7 @@ interface StudentViewProps {
   canAddImages: (fb: Feedback) => boolean
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onLeaveClassroom: () => void
+  onRejoinClassroom: () => void
 }
 
 export default function StudentView({
@@ -39,6 +41,7 @@ export default function StudentView({
   uploadingImagesFeedbackUuid,
   error,
   isCompleted,
+  isActive,
   onNewFeedbackChange,
   onAddFeedback,
   onStartEditFeedback,
@@ -52,7 +55,8 @@ export default function StudentView({
   canEditFeedback,
   canAddImages,
   timelineItems,
-  onLeaveClassroom
+  onLeaveClassroom,
+  onRejoinClassroom
 }: StudentViewProps) {
   const handleAddFeedback = async (e: FormEvent) => {
     e.preventDefault()
@@ -70,10 +74,21 @@ export default function StudentView({
         </Alert>
       )}
 
+      {!isActive && !isCompleted && (
+        <Alert type="warning">
+          You have left this classroom. You can still view your feedback history. Click "Rejoin Classroom" to become an active member again.
+        </Alert>
+      )}
+
       <div style={{ marginBottom: '20px' }}>
-        {!isCompleted && (
+        {!isCompleted && isActive && (
           <Button variant="danger" size="small" onClick={onLeaveClassroom}>
             Leave Classroom
+          </Button>
+        )}
+        {!isCompleted && !isActive && (
+          <Button variant="primary" size="small" onClick={onRejoinClassroom}>
+            Rejoin Classroom
           </Button>
         )}
       </div>
@@ -83,7 +98,7 @@ export default function StudentView({
       <CheckpointBadges checkpoints={studentProgress} />
 
       <h4>My Timeline</h4>
-      {!isCompleted && (
+      {!isCompleted && isActive && (
         <FeedbackForm
           value={newFeedback}
           onChange={onNewFeedbackChange}

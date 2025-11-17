@@ -164,7 +164,7 @@ export default function TeacherView({
                 editable={!isCompleted}
               />
 
-              {!isCompleted && (
+              {!isCompleted && selectedStudent.active !== false && (
                 <FeedbackForm
                   value={newFeedback}
                   onChange={onNewFeedbackChange}
@@ -172,6 +172,12 @@ export default function TeacherView({
                   label="Add Feedback"
                   placeholder="Write your feedback here..."
                 />
+              )}
+
+              {selectedStudent.active === false && (
+                <Alert type="warning">
+                  This student has left the classroom. No new feedback can be added.
+                </Alert>
               )}
 
               <h5>Timeline</h5>

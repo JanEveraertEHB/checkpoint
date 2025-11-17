@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useClassroom, useCheckpoints, useFeedback, useTimeline } from '../hooks'
 import { Loading, Button } from '../components/common'
 import { ClassroomHeader, TeacherView, StudentView } from '../components/classroom'
-import { removeStudentFromClassroom, leaveClassroom, completeClassroom } from '../services/api'
+import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom } from '../services/api'
 import type { Student } from '../types'
 
 export default function ClassroomDetail() {
@@ -179,9 +179,19 @@ export default function ClassroomDetail() {
 
     try {
       await leaveClassroom(uuid!)
-      navigate('/home')
+      refreshClassroom()
     } catch (err) {
       setClassroomError('Failed to leave classroom')
+    }
+  }
+
+  // Handle rejoining classroom (student only)
+  const handleRejoinClassroom = async () => {
+    try {
+      await rejoinClassroom(uuid!)
+      refreshClassroom()
+    } catch (err) {
+      setClassroomError('Failed to rejoin classroom')
     }
   }
 
@@ -263,6 +273,7 @@ export default function ClassroomDetail() {
               uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
               error={error}
               isCompleted={classroom.completed === true}
+              isActive={classroom.active !== false}
               onNewFeedbackChange={setNewFeedback}
               onAddFeedback={handleAddFeedback}
               onStartEditFeedback={startEditFeedback}
@@ -277,6 +288,7 @@ export default function ClassroomDetail() {
               canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
               timelineItems={timelineItems}
               onLeaveClassroom={handleLeaveClassroom}
+              onRejoinClassroom={handleRejoinClassroom}
             />
           )}
         </div>

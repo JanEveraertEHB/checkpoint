@@ -22,6 +22,7 @@ export interface Classroom {
   students?: Student[]
   completed?: boolean
   completed_at?: string | null
+  active?: boolean
 }
 
 export interface Student {

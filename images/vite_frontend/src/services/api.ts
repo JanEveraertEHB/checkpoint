@@ -55,6 +55,9 @@ export const removeStudentFromClassroom = (classroom_uuid: string, student_uuid:
 export const leaveClassroom = (classroom_uuid: string) =>
   api.post(`/classrooms/${classroom_uuid}/leave`)
 
+export const rejoinClassroom = (classroom_uuid: string) =>
+  api.post(`/classrooms/${classroom_uuid}/rejoin`)
+
 export const completeClassroom = (classroom_uuid: string) =>
   api.post(`/classrooms/${classroom_uuid}/complete`)
 

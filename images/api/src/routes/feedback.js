@@ -177,6 +177,11 @@ router.post('/', decodeToken, async (req, res) => {
       return res.status(400).send({ message: "Student is not a member of this classroom" });
     }
 
+    // Check if student is active (not left/removed)
+    if (!studentMembership.active) {
+      return res.status(403).send({ message: "Cannot add feedback for inactive student" });
+    }
+
     const feedbackData = {
       uuid: uuidv4(),
       classroom_uuid,
