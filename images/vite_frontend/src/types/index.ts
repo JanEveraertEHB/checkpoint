@@ -23,6 +23,7 @@ export interface Classroom {
   completed?: boolean
   completed_at?: string | null
   active?: boolean
+  allowed_email_domain?: string | null
 }
 
 export interface Student {

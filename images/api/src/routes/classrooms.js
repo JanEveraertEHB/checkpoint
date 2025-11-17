@@ -107,7 +107,8 @@ router.post('/', decodeToken, async (req, res) => {
       name: req.body.name,
       academic_year: req.body.academic_year,
       teacher_uuid: req.user.uuid,
-      invite_code: generateInviteCode()
+      invite_code: generateInviteCode(),
+      allowed_email_domain: req.body.allowed_email_domain || null
     };
 
     const [classroom] = await pg.get()('classrooms')
@@ -140,6 +141,20 @@ router.post('/join/:invite_code', decodeToken, async (req, res) => {
 
     if (!classroom) {
       return res.status(404).send({ message: "Invalid invite code" });
+    }
+
+    // Check email domain restriction
+    if (classroom.allowed_email_domain) {
+      const user = await pg.get()('users')
+        .where({ uuid: userUuid })
+        .first();
+
+      const userEmailDomain = user.email.split('@')[1];
+      if (userEmailDomain !== classroom.allowed_email_domain) {
+        return res.status(403).send({
+          message: `Only users with @${classroom.allowed_email_domain} email addresses can join this classroom`
+        });
+      }
     }
 
     // Check if already a member

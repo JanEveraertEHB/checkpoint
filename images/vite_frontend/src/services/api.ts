@@ -40,8 +40,8 @@ export const getClassrooms = () =>
 export const getClassroom = (uuid: string) =>
   api.get<Classroom>(`/classrooms/${uuid}`)
 
-export const createClassroom = (name: string, academic_year: string) =>
-  api.post<Classroom>('/classrooms', { name, academic_year })
+export const createClassroom = (name: string, academic_year: string, allowed_email_domain?: string) =>
+  api.post<Classroom>('/classrooms', { name, academic_year, allowed_email_domain: allowed_email_domain || null })
 
 export const joinClassroom = (invite_code: string) =>
   api.post<Classroom>(`/classrooms/join/${invite_code}`)

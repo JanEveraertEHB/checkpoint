@@ -13,6 +13,7 @@ export default function Home() {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [name, setName] = useState('')
   const [academicYear, setAcademicYear] = useState('')
+  const [allowedEmailDomain, setAllowedEmailDomain] = useState('')
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
 
@@ -35,9 +36,10 @@ export default function Home() {
     e.preventDefault()
     setError('')
     try {
-      await createClassroom(name, academicYear)
+      await createClassroom(name, academicYear, allowedEmailDomain || undefined)
       setName('')
       setAcademicYear('')
+      setAllowedEmailDomain('')
       setShowCreateForm(false)
       fetchClassrooms()
     } catch (err) {
@@ -114,6 +116,18 @@ export default function Home() {
                   onChange={(e) => setAcademicYear(e.target.value)}
                   required
                 />
+                <label htmlFor="allowedEmailDomain">Allowed Email Domain (optional)</label>
+                <input
+                  className="u-full-width"
+                  type="text"
+                  id="allowedEmailDomain"
+                  placeholder="e.g., student.ehb.be (leave empty for no restriction)"
+                  value={allowedEmailDomain}
+                  onChange={(e) => setAllowedEmailDomain(e.target.value)}
+                />
+                <small style={{ color: '#666', display: 'block', marginBottom: '10px' }}>
+                  If set, only users with email addresses ending in @{allowedEmailDomain || 'domain.com'} can join
+                </small>
                 <button className="button-primary" type="submit">Create</button>
                 <button type="button" onClick={() => setShowCreateForm(false)} style={{ marginLeft: '10px' }}>
                   Cancel
