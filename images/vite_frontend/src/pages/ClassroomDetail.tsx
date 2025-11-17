@@ -29,11 +29,15 @@ export default function ClassroomDetail() {
     checkpoints,
     studentProgress,
     nextCheckpoint,
+    hasProgress,
     error: checkpointError,
     fetchCheckpoints,
+    fetchHasProgress,
     fetchStudentProgress,
     addCheckpoint,
     removeCheckpoint,
+    editCheckpoint,
+    reorderCheckpoint,
     toggleCheckpointReached
   } = useCheckpoints(uuid)
 
@@ -67,6 +71,9 @@ export default function ClassroomDetail() {
   useEffect(() => {
     if (classroom && uuid) {
       fetchCheckpoints()
+      if (classroom.role === 'teacher') {
+        fetchHasProgress()
+      }
       if (classroom.role === 'student' && user) {
         fetchMyFeedback()
         fetchStudentProgress(user.uuid)
@@ -119,6 +126,19 @@ export default function ClassroomDetail() {
     if (selectedStudent) {
       fetchStudentProgress(selectedStudent.uuid)
     }
+  }
+
+  // Handle editing checkpoint
+  const handleEditCheckpoint = async (checkpointUuid: string, name: string, description: string) => {
+    await editCheckpoint(checkpointUuid, name, description)
+    if (selectedStudent) {
+      fetchStudentProgress(selectedStudent.uuid)
+    }
+  }
+
+  // Handle reordering checkpoint
+  const handleReorderCheckpoint = async (checkpointUuid: string, newOrderIndex: number) => {
+    await reorderCheckpoint(checkpointUuid, newOrderIndex)
   }
 
   // Handle toggling feedback lock
@@ -237,11 +257,14 @@ export default function ClassroomDetail() {
               editFeedbackContent={editFeedbackContent}
               uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
               error={error}
+              canReorderCheckpoints={!hasProgress}
               onFetchInviteCode={fetchInviteCode}
               onSelectStudent={handleSelectStudent}
               onRemoveStudent={handleRemoveStudent}
               onAddCheckpoint={addCheckpoint}
               onDeleteCheckpoint={handleDeleteCheckpoint}
+              onEditCheckpoint={handleEditCheckpoint}
+              onReorderCheckpoint={handleReorderCheckpoint}
               onToggleCheckpoint={handleToggleCheckpoint}
               onNewFeedbackChange={setNewFeedback}
               onAddFeedback={handleAddFeedback}

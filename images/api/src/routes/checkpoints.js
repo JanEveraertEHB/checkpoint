@@ -31,6 +31,33 @@ router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
   }
 });
 
+// Check if any checkpoint in a classroom has been reached by any student
+router.get('/classroom/:classroom_uuid/has-progress', decodeToken, async (req, res) => {
+  try {
+    const userUuid = req.user.uuid;
+    const classroomUuid = req.params.classroom_uuid;
+
+    // Check if user is teacher
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Only teachers can check checkpoint progress" });
+    }
+
+    const reachedCheckpoint = await pg.get()('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
+      .where({ 'checkpoints.classroom_uuid': classroomUuid })
+      .first();
+
+    res.status(200).send({ has_progress: !!reachedCheckpoint });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error checking checkpoint progress" });
+  }
+});
+
 // Create a new checkpoint (teacher only)
 router.post('/', decodeToken, async (req, res) => {
   if (!req.body) {
@@ -78,6 +105,54 @@ router.post('/', decodeToken, async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(501).send({ message: "Error creating checkpoint" });
+  }
+});
+
+// Update a checkpoint (teacher only)
+router.put('/:uuid', decodeToken, async (req, res) => {
+  if (!req.body) {
+    return res.status(401).send({ message: "No body" });
+  }
+
+  try {
+    const userUuid = req.user.uuid;
+    const checkpointUuid = req.params.uuid;
+    const { name, description } = req.body;
+
+    const checkpoint = await pg.get()('checkpoints')
+      .where({ uuid: checkpointUuid })
+      .first();
+
+    if (!checkpoint) {
+      return res.status(404).send({ message: "Checkpoint not found" });
+    }
+
+    // Check if user is teacher
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Only teachers can update checkpoints" });
+    }
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).send({ message: "No fields to update" });
+    }
+
+    const [updatedCheckpoint] = await pg.get()('checkpoints')
+      .where({ uuid: checkpointUuid })
+      .update(updateData)
+      .returning('*');
+
+    res.status(200).send({ ...updatedCheckpoint, message: "success" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error updating checkpoint" });
   }
 });
 
@@ -147,6 +222,16 @@ router.put('/:uuid/reorder', decodeToken, async (req, res) => {
 
     if (!membership) {
       return res.status(403).send({ message: "Only teachers can reorder checkpoints" });
+    }
+
+    // Check if any student has reached any checkpoint in this classroom
+    const reachedCheckpoints = await pg.get()('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
+      .where({ 'checkpoints.classroom_uuid': checkpoint.classroom_uuid })
+      .first();
+
+    if (reachedCheckpoints) {
+      return res.status(403).send({ message: "Cannot reorder checkpoints after students have reached them" });
     }
 
     await pg.get()('checkpoints')

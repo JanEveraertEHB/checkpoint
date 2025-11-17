@@ -33,6 +33,15 @@ export const registerUser = (first_name: string, last_name: string, email: strin
 export const validateToken = () =>
   api.get<User>('/users/validate_token')
 
+export const getProfile = () =>
+  api.get<User>('/users/profile')
+
+export const updateProfile = (data: { first_name?: string; last_name?: string; email?: string; date_of_birth?: string | null }) =>
+  api.put<User & { token: string }>('/users/profile', data)
+
+export const changePassword = (current_password: string, new_password: string) =>
+  api.put('/users/password', { current_password, new_password })
+
 // Classroom APIs
 export const getClassrooms = () =>
   api.get<Classroom[]>('/classrooms')
@@ -94,11 +103,20 @@ export const deleteFeedbackImage = (image_uuid: string) =>
 export const getCheckpoints = (classroom_uuid: string) =>
   api.get<Checkpoint[]>(`/checkpoints/classroom/${classroom_uuid}`)
 
+export const checkHasProgress = (classroom_uuid: string) =>
+  api.get<{ has_progress: boolean }>(`/checkpoints/classroom/${classroom_uuid}/has-progress`)
+
 export const createCheckpoint = (classroom_uuid: string, name: string, description: string) =>
   api.post<Checkpoint>('/checkpoints', { classroom_uuid, name, description })
 
 export const deleteCheckpoint = (checkpoint_uuid: string) =>
   api.delete(`/checkpoints/${checkpoint_uuid}`)
+
+export const updateCheckpoint = (checkpoint_uuid: string, name: string, description: string) =>
+  api.put<Checkpoint>(`/checkpoints/${checkpoint_uuid}`, { name, description })
+
+export const reorderCheckpoint = (checkpoint_uuid: string, order_index: number) =>
+  api.put(`/checkpoints/${checkpoint_uuid}/reorder`, { order_index })
 
 export const getStudentProgress = (classroom_uuid: string, student_uuid: string) =>
   api.get<StudentProgress>(`/checkpoints/classroom/${classroom_uuid}/student/${student_uuid}/progress`)
@@ -108,5 +126,9 @@ export const markCheckpointReached = (checkpoint_uuid: string, student_uuid: str
 
 export const unmarkCheckpointReached = (checkpoint_uuid: string, student_uuid: string) =>
   api.delete(`/checkpoints/${checkpoint_uuid}/students/${student_uuid}`)
+
+// Contact API
+export const sendContactMessage = (data: { name: string; email: string; subject: string; message: string }) =>
+  api.post('/contact', data)
 
 export default api

@@ -17,6 +17,7 @@ const user_routes = require('./routes/users')
 const classroom_routes = require('./routes/classrooms')
 const feedback_routes = require('./routes/feedback')
 const checkpoint_routes = require('./routes/checkpoints')
+const contact_routes = require('./routes/contact')
 
 const { init } = require('./socket');
 
@@ -34,6 +35,7 @@ app.use('/users', user_routes);
 app.use('/classrooms', classroom_routes);
 app.use('/feedback', feedback_routes);
 app.use('/checkpoints', checkpoint_routes);
+app.use('/contact', contact_routes);
 
 app.get('/', (req, res) => {
   res.send("running")

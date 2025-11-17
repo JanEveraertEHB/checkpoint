@@ -108,4 +108,105 @@ router.post('/register', async (req, res) => {
   }
 })
 
+// Get user profile
+router.get('/profile', decodeToken, async (req, res) => {
+  try {
+    const user = await pg.get()('users')
+      .where({ uuid: req.user.uuid })
+      .first();
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    delete user.password;
+    res.status(200).send(user);
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error fetching profile" });
+  }
+});
+
+// Update user profile
+router.put('/profile', decodeToken, async (req, res) => {
+  try {
+    const { first_name, last_name, email, date_of_birth } = req.body;
+    const updateData = {};
+
+    if (first_name) updateData.first_name = first_name;
+    if (last_name) updateData.last_name = last_name;
+    if (email) updateData.email = email;
+    if (date_of_birth !== undefined) updateData.date_of_birth = date_of_birth || null;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).send({ message: "No fields to update" });
+    }
+
+    // Check if email is already taken by another user
+    if (email) {
+      const existingUser = await pg.get()('users')
+        .where({ email })
+        .whereNot({ uuid: req.user.uuid })
+        .first();
+
+      if (existingUser) {
+        return res.status(400).send({ message: "Email already in use" });
+      }
+    }
+
+    await pg.get()('users')
+      .where({ uuid: req.user.uuid })
+      .update(updateData);
+
+    const updatedUser = await pg.get()('users')
+      .where({ uuid: req.user.uuid })
+      .first();
+
+    delete updatedUser.password;
+
+    // Generate new token with updated info
+    const token = jwt.sign(updatedUser, process.env.TOKEN_ENCRYPTION);
+
+    res.status(200).send({ ...updatedUser, token, message: "Profile updated successfully" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error updating profile" });
+  }
+});
+
+// Change password
+router.put('/password', decodeToken, async (req, res) => {
+  if (!req.body || !req.body.current_password || !req.body.new_password) {
+    return res.status(400).send({ message: "Current and new password required" });
+  }
+
+  try {
+    const user = await pg.get()('users')
+      .where({ uuid: req.user.uuid })
+      .first();
+
+    if (!user) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    // Verify current password
+    const validPassword = await bcrypt.compare(req.body.current_password, user.password);
+    if (!validPassword) {
+      return res.status(403).send({ message: "Current password is incorrect" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(req.body.new_password, SALT_ROUNDS);
+
+    await pg.get()('users')
+      .where({ uuid: req.user.uuid })
+      .update({ password: hashedPassword });
+
+    res.status(200).send({ message: "Password updated successfully" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error updating password" });
+  }
+});
+
 module.exports = router

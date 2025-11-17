@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
 import { getClassrooms, createClassroom, joinClassroom } from '../services/api'
 import type { Classroom } from '../types'
 
 export default function Home() {
-  const { user, logout } = useAuth()
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -68,15 +66,7 @@ export default function Home() {
     <div className="container">
       <div className="row">
         <div className="twelve columns">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2>My Classrooms</h2>
-            <div>
-              <span style={{ marginRight: '10px' }}>
-                Welcome, {user?.first_name} {user?.last_name}
-              </span>
-              <button onClick={logout}>Logout</button>
-            </div>
-          </div>
+          <h2>My Classrooms</h2>
 
           <div style={{ marginBottom: '20px' }}>
             <button

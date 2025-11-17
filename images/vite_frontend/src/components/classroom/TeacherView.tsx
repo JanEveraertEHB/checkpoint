@@ -19,11 +19,14 @@ interface TeacherViewProps {
   editFeedbackContent: string
   uploadingImagesFeedbackUuid: string | null
   error: string
+  canReorderCheckpoints: boolean
   onFetchInviteCode: () => void
   onSelectStudent: (student: Student) => void
   onRemoveStudent: (student: Student) => void
   onAddCheckpoint: (name: string, description: string) => Promise<void>
   onDeleteCheckpoint: (uuid: string) => void
+  onEditCheckpoint: (uuid: string, name: string, description: string) => Promise<void>
+  onReorderCheckpoint: (uuid: string, newOrderIndex: number) => Promise<void>
   onToggleCheckpoint: (uuid: string, reached: boolean) => void
   onNewFeedbackChange: (value: string) => void
   onAddFeedback: () => Promise<void>
@@ -54,11 +57,14 @@ export default function TeacherView({
   editFeedbackContent,
   uploadingImagesFeedbackUuid,
   error,
+  canReorderCheckpoints,
   onFetchInviteCode,
   onSelectStudent,
   onRemoveStudent,
   onAddCheckpoint,
   onDeleteCheckpoint,
+  onEditCheckpoint,
+  onReorderCheckpoint,
   onToggleCheckpoint,
   onNewFeedbackChange,
   onAddFeedback,
@@ -140,7 +146,13 @@ export default function TeacherView({
         />
       )}
 
-      <CheckpointTable checkpoints={checkpoints} onDelete={handleDeleteCheckpoint} />
+      <CheckpointTable
+        checkpoints={checkpoints}
+        onDelete={handleDeleteCheckpoint}
+        onEdit={onEditCheckpoint}
+        onReorder={onReorderCheckpoint}
+        canReorder={canReorderCheckpoints}
+      />
 
       <div className="row">
         <div className="four columns">
