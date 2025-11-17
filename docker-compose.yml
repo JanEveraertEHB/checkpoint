@@ -33,8 +33,16 @@ services:
       dockerfile: Dockerfile.dev
     container_name: frontend
     ports:
-      - 8080:80
       - 5173:5173
+    volumes:
+      - ./images/vite_frontend/src:/app/src
+      - ./images/vite_frontend/public:/app/public
+      - ./images/vite_frontend/index.html:/app/index.html
+      - ./images/vite_frontend/vite.config.ts:/app/vite.config.ts
+      - ./images/vite_frontend/tsconfig.json:/app/tsconfig.json
+      - ./images/vite_frontend/tsconfig.app.json:/app/tsconfig.app.json
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
       - api
     networks:
