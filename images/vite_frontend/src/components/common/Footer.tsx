@@ -13,7 +13,7 @@ export default function Footer() {
           <div className="four columns">
             <h6>Support</h6>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              <li><a href="#" style={{ color: '#666' }}>FAQ</a></li>
+              <li><Link to="/faq" style={{ color: '#666' }}>FAQ</Link></li>
               <li><Link to="/contact" style={{ color: '#666' }}>Contact Us</Link></li>
               <li><a href="#" style={{ color: '#666' }}>Help Center</a></li>
             </ul>
@@ -21,9 +21,9 @@ export default function Footer() {
           <div className="four columns">
             <h6>Legal</h6>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              <li><a href="#" style={{ color: '#666' }}>Terms & Conditions</a></li>
-              <li><a href="#" style={{ color: '#666' }}>Privacy Policy</a></li>
-              <li><a href="#" style={{ color: '#666' }}>GDPR</a></li>
+              <li><Link to="/terms" style={{ color: '#666' }}>Terms & Conditions</Link></li>
+              <li><Link to="/privacy" style={{ color: '#666' }}>Privacy Policy</Link></li>
+              <li><Link to="/gdpr" style={{ color: '#666' }}>GDPR</Link></li>
             </ul>
           </div>
           <div className="four columns">

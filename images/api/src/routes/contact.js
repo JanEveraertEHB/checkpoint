@@ -5,8 +5,9 @@ const { checkBodyFields } = require("./../helpers/bodyHelpers")
 
 // Create transporter for sending emails
 const createTransporter = () => {
+  console.log(process.env.SMTP_HOST)
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: process.env.SMTP_HOST || 'cloudemail.com',
     port: process.env.SMTP_PORT || 587,
     secure: false,
     auth: {
@@ -37,21 +38,21 @@ router.post('/', async (req, res) => {
       replyTo: email,
       subject: `[Checkpoint Contact] ${subject} - from ${name}`,
       text: `
-Name: ${name}
-Email: ${email}
-Subject: ${subject}
+        Name: ${name}
+        Email: ${email}
+        Subject: ${subject}
 
-Message:
-${message}
+        Message:
+        ${message}
       `,
       html: `
-<h3>New Contact Form Submission</h3>
-<p><strong>Name:</strong> ${name}</p>
-<p><strong>Email:</strong> ${email}</p>
-<p><strong>Subject:</strong> ${subject}</p>
-<hr>
-<p><strong>Message:</strong></p>
-<p>${message.replace(/\n/g, '<br>')}</p>
+        <h3>New Contact Form Submission</h3>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <hr>
+        <p><strong>Message:</strong></p>
+        <p>${message.replace(/\n/g, '<br>')}</p>
       `
     }
 

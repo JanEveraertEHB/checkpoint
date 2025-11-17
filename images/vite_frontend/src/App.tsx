@@ -9,6 +9,10 @@ import ClassroomDetail from './pages/ClassroomDetail'
 import JoinClassroom from './pages/JoinClassroom'
 import Profile from './pages/Profile'
 import Contact from './pages/Contact'
+import FAQ from './pages/FAQ'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
+import GDPR from './pages/GDPR'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -94,6 +98,10 @@ function AppRoutes() {
           />
           <Route path="/join/:invite_code" element={<JoinClassroom />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/gdpr" element={<GDPR />} />
         </Routes>
       </div>
       <Footer />
