@@ -104,6 +104,7 @@ export interface Note {
   uuid: string
   classroom_uuid: string
   user_uuid: string
+  student_uuid: string | null
   content: string
   created_at: string
   updated_at: string

@@ -274,7 +274,11 @@ export default function TeacherView({
   )
 
   const notesTab = (
-    <Notes classroomUuid={classroom.uuid} />
+    <Notes
+      classroomUuid={classroom.uuid}
+      studentUuid={selectedStudent?.uuid}
+      studentName={selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : undefined}
+    />
   )
 
   return (

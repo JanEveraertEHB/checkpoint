@@ -8,9 +8,11 @@ import type { Note } from '../../types'
 
 interface NotesProps {
   classroomUuid: string
+  studentUuid?: string
+  studentName?: string
 }
 
-export default function Notes({ classroomUuid }: NotesProps) {
+export default function Notes({ classroomUuid, studentUuid, studentName }: NotesProps) {
   const [notes, setNotes] = useState<Note[]>([])
   const [newNoteContent, setNewNoteContent] = useState('')
   const [editingNoteUuid, setEditingNoteUuid] = useState<string | null>(null)
@@ -20,11 +22,11 @@ export default function Notes({ classroomUuid }: NotesProps) {
 
   useEffect(() => {
     fetchNotes()
-  }, [classroomUuid])
+  }, [classroomUuid, studentUuid])
 
   const fetchNotes = async () => {
     try {
-      const response = await getNotes(classroomUuid)
+      const response = await getNotes(classroomUuid, studentUuid)
       setNotes(response.data)
       setLoading(false)
     } catch (err) {
@@ -39,7 +41,7 @@ export default function Notes({ classroomUuid }: NotesProps) {
     if (!stripHtmlTags(newNoteContent)) return
 
     try {
-      await createNote(classroomUuid, newNoteContent)
+      await createNote(classroomUuid, newNoteContent, studentUuid)
       setNewNoteContent('')
       fetchNotes()
     } catch (err) {
@@ -89,9 +91,11 @@ export default function Notes({ classroomUuid }: NotesProps) {
     <div>
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <h4>My Private Notes</h4>
+      <h4>{studentName ? `Notes: ${studentName}` : 'My Private Notes'}</h4>
       <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
-        These notes are private and only visible to you.
+        {studentName
+          ? `Private notes about ${studentName}. Only visible to you.`
+          : 'These notes are private and only visible to you.'}
       </p>
 
       <form onSubmit={handleAddNote} style={{ marginBottom: '30px' }}>

@@ -9,6 +9,7 @@ router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
   try {
     const userUuid = req.user.uuid
     const classroomUuid = req.params.classroom_uuid
+    const studentUuid = req.query.student_uuid // Optional: for teacher's student-specific notes
 
     // Check membership
     const membership = await pg.get()('classroom_members')
@@ -19,13 +20,22 @@ router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
       return res.status(403).send({ message: "Not a member of this classroom" })
     }
 
-    // Get notes for this user in this classroom
-    const notes = await pg.get()('notes')
+    // Build query for notes
+    const query = pg.get()('notes')
       .where({
         classroom_uuid: classroomUuid,
         user_uuid: userUuid
       })
-      .orderBy('created_at', 'desc')
+
+    // Filter by student if provided (for teachers)
+    if (studentUuid) {
+      query.where({ student_uuid: studentUuid })
+    } else {
+      // If no student specified, get classroom-level notes (student_uuid IS NULL)
+      query.whereNull('student_uuid')
+    }
+
+    const notes = await query.orderBy('created_at', 'desc')
 
     res.status(200).send(notes)
   } catch (e) {
@@ -38,7 +48,7 @@ router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
 router.post('/', decodeToken, async (req, res) => {
   try {
     const userUuid = req.user.uuid
-    const { classroom_uuid, content } = req.body
+    const { classroom_uuid, content, student_uuid } = req.body
 
     if (!classroom_uuid || !content) {
       return res.status(400).send({ message: "classroom_uuid and content are required" })
@@ -53,11 +63,23 @@ router.post('/', decodeToken, async (req, res) => {
       return res.status(403).send({ message: "Not a member of this classroom" })
     }
 
+    // If student_uuid is provided, verify the student is in the classroom
+    if (student_uuid) {
+      const studentMembership = await pg.get()('classroom_members')
+        .where({ classroom_uuid, user_uuid: student_uuid })
+        .first()
+
+      if (!studentMembership) {
+        return res.status(400).send({ message: "Student not found in this classroom" })
+      }
+    }
+
     const noteData = {
       uuid: uuidv4(),
       classroom_uuid,
       user_uuid: userUuid,
-      content
+      content,
+      student_uuid: student_uuid || null
     }
 
     const [note] = await pg.get()('notes')
