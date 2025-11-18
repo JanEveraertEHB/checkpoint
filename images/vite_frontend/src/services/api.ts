@@ -185,4 +185,17 @@ export const fulfillFeedbackDemand = (demand_uuid: string) =>
 export const deleteFeedbackDemand = (demand_uuid: string) =>
   api.delete(`/feedback-demands/${demand_uuid}`)
 
+// Notes APIs
+export const getNotes = (classroom_uuid: string) =>
+  api.get(`/notes/classroom/${classroom_uuid}`)
+
+export const createNote = (classroom_uuid: string, content: string) =>
+  api.post('/notes', { classroom_uuid, content })
+
+export const updateNote = (note_uuid: string, content: string) =>
+  api.put(`/notes/${note_uuid}`, { content })
+
+export const deleteNote = (note_uuid: string) =>
+  api.delete(`/notes/${note_uuid}`)
+
 export default api

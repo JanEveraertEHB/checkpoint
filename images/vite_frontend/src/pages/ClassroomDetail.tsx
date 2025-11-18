@@ -371,6 +371,7 @@ export default function ClassroomDetail() {
             />
           ) : (
             <StudentView
+              classroomUuid={uuid!}
               studentProgress={studentProgress}
               nextCheckpoint={nextCheckpoint}
               newFeedback={newFeedback}

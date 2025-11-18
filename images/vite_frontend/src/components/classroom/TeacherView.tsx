@@ -4,6 +4,7 @@ import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
 import { InviteCodeDisplay } from '../classroom'
+import { Notes } from '../notes'
 import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, typography } from '../../styles/theme'
 import type { Classroom, Student, Feedback, Checkpoint } from '../../types'
@@ -273,10 +274,7 @@ export default function TeacherView({
   )
 
   const notesTab = (
-    <>
-      <h4>Notes</h4>
-      <p style={{ color: '#666' }}>Notes feature coming soon...</p>
-    </>
+    <Notes classroomUuid={classroom.uuid} />
   )
 
   return (

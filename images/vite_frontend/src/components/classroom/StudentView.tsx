@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Timeline, Button, Tabs } from '../common'
 import { NextCheckpointCard, CheckpointBadges } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
+import { Notes } from '../notes'
 import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, borderRadius, typography } from '../../styles/theme'
 import type { Feedback, Checkpoint } from '../../types'
@@ -24,6 +25,7 @@ interface FeedbackDemand {
 }
 
 interface StudentViewProps {
+  classroomUuid: string
   studentProgress: Checkpoint[]
   nextCheckpoint: Checkpoint | null
   newFeedback: string
@@ -57,6 +59,7 @@ interface StudentViewProps {
 }
 
 export default function StudentView({
+  classroomUuid,
   studentProgress,
   nextCheckpoint,
   newFeedback,
@@ -296,10 +299,7 @@ export default function StudentView({
   )
 
   const notesTab = (
-    <>
-      <h4>Notes</h4>
-      <p style={{ color: '#666' }}>Notes feature coming soon...</p>
-    </>
+    <Notes classroomUuid={classroomUuid} />
   )
 
   return (

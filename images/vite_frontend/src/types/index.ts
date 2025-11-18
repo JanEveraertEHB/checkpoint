@@ -99,6 +99,16 @@ export interface TimelineItem {
   data: Feedback | Checkpoint
 }
 
+export interface Note {
+  id: number
+  uuid: string
+  classroom_uuid: string
+  user_uuid: string
+  content: string
+  created_at: string
+  updated_at: string
+}
+
 export interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
