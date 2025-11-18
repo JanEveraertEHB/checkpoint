@@ -48,7 +48,6 @@ interface StudentViewProps {
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onLeaveClassroom: () => void
   onRejoinClassroom: () => void
-  onRequestFeedback: () => Promise<void>
 }
 
 export default function StudentView({
@@ -75,8 +74,7 @@ export default function StudentView({
   canAddImages,
   timelineItems,
   onLeaveClassroom,
-  onRejoinClassroom,
-  onRequestFeedback
+  onRejoinClassroom
 }: StudentViewProps) {
   const [activeTab, setActiveTab] = useState('feedback')
   const [demands, setDemands] = useState<FeedbackDemand[]>([])

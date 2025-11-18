@@ -320,7 +320,6 @@ export default function ClassroomDetail() {
               timelineItems={timelineItems}
               onCompleteClassroom={handleCompleteClassroom}
               onDemandFeedback={handleDemandFeedback}
-              onDemandFeedbackFromAll={handleDemandFeedbackFromAll}
             />
           ) : (
             <StudentView
@@ -348,7 +347,6 @@ export default function ClassroomDetail() {
               timelineItems={timelineItems}
               onLeaveClassroom={handleLeaveClassroom}
               onRejoinClassroom={handleRejoinClassroom}
-              onRequestFeedback={handleRequestFeedback}
             />
           )}
         </div>

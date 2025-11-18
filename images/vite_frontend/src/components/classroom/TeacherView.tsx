@@ -45,7 +45,6 @@ interface TeacherViewProps {
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onCompleteClassroom: () => void
   onDemandFeedback: (studentUuid: string) => void
-  onDemandFeedbackFromAll: () => void
 }
 
 export default function TeacherView({
@@ -84,8 +83,7 @@ export default function TeacherView({
   canAddImages,
   timelineItems,
   onCompleteClassroom,
-  onDemandFeedback,
-  onDemandFeedbackFromAll
+  onDemandFeedback
 }: TeacherViewProps) {
   const [activeTab, setActiveTab] = useState('feedback')
   const [showAddCheckpoint, setShowAddCheckpoint] = useState(false)
