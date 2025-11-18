@@ -5,6 +5,7 @@ import { Button, RichTextEditor } from '../common'
 import { getNotes, createNote, updateNote, deleteNote } from '../../services/api'
 import { formatDate, stripHtmlTags } from '../../utils'
 import type { Note } from '../../types'
+import './Notes.css'
 
 interface NotesProps {
   classroomUuid: string
@@ -89,81 +90,53 @@ export default function Notes({ classroomUuid, studentUuid, studentName }: Notes
 
   return (
     <div>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="notes-error">{error}</p>}
 
       <h4>{studentName ? `Notes: ${studentName}` : 'My Private Notes'}</h4>
-      <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '15px' }}>
+      <p className="notes-description">
         {studentName
           ? `Private notes about ${studentName}. Only visible to you.`
           : 'These notes are private and only visible to you.'}
       </p>
 
-      <form onSubmit={handleAddNote} style={{ marginBottom: '30px' }}>
+      <form onSubmit={handleAddNote} className="notes-form">
         <label>Add New Note</label>
         <RichTextEditor value={newNoteContent} onChange={setNewNoteContent} />
-        <Button type="submit" style={{ marginTop: '10px' }}>
+        <Button type="submit" className="notes-form-button">
           Add Note
         </Button>
       </form>
 
       {notes.length === 0 ? (
-        <p style={{ color: '#666' }}>No notes yet. Add your first note above!</p>
+        <p className="notes-empty">No notes yet. Add your first note above!</p>
       ) : (
         <div>
           {notes.map((note) => (
-            <div
-              key={note.uuid}
-              style={{
-                marginBottom: '20px',
-                padding: '15px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                backgroundColor: '#f9f9f9'
-              }}
-            >
+            <div key={note.uuid} className="note-item">
               {editingNoteUuid === note.uuid ? (
                 <div>
                   <RichTextEditor value={editContent} onChange={setEditContent} />
-                  <div style={{ marginTop: '10px' }}>
-                    <Button onClick={handleSaveEdit} style={{ marginRight: '5px' }}>
-                      Save
-                    </Button>
+                  <div className="note-edit-actions">
+                    <Button onClick={handleSaveEdit}>Save</Button>
                     <Button onClick={cancelEdit}>Cancel</Button>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div
-                    style={{ marginBottom: '10px' }}
+                    className="note-content"
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
                   />
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginTop: '10px',
-                      paddingTop: '10px',
-                      borderTop: '1px solid #ddd'
-                    }}
-                  >
-                    <small style={{ color: '#666' }}>
+                  <div className="note-footer">
+                    <small className="note-timestamp">
                       {formatDate(note.created_at)}
                       {note.updated_at !== note.created_at && ' (edited)'}
                     </small>
-                    <div>
-                      <Button
-                        size="small"
-                        onClick={() => startEdit(note)}
-                        style={{ marginRight: '5px' }}
-                      >
+                    <div className="note-actions">
+                      <Button size="small" onClick={() => startEdit(note)}>
                         Edit
                       </Button>
-                      <Button
-                        size="small"
-                        variant="danger"
-                        onClick={() => handleDelete(note.uuid)}
-                      >
+                      <Button size="small" variant="danger" onClick={() => handleDelete(note.uuid)}>
                         Delete
                       </Button>
                     </div>

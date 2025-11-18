@@ -38,29 +38,27 @@ export default function Navbar() {
   return (
     <nav style={{
       backgroundColor: '#FFFFFF',
-      padding: '10px 0',
-      borderBottom: '1px solid #ddd',
       position: 'sticky',
       top: '0px',
-      zIndex: 1000
+      zIndex: 1000,
+      backgroundColor: '#F5E10E'
     }}>
-      <div className="container">
+      <div className="container navbar">
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div>
-            <Link to="/home" style={{ marginRight: '20px', fontWeight: 'bold', textDecoration: 'none' }}>
-              Checkpoint
+            <Link to="/home" style={{ marginRight: '20px' }}>
+              <span className="logo">C.A</span>
             </Link>
+            <Link to="/home">Classrooms</Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span style={{ color: '#666' }}>
+            <Link to="/profile">
               {user.first_name} {user.last_name}
-            </span>
-            <Link to="/home">Classrooms</Link>
-            <Link to="/profile">Profile</Link>
+            </Link>
             <Link to="/notifications" style={{ position: 'relative' }}>
               Notifications
               {notificationCount > 0 && (
@@ -83,18 +81,11 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            <button
+            <a
               onClick={logout}
-              style={{
-                background: 'none',
-                border: '1px solid #999',
-                padding: '5px 10px',
-                cursor: 'pointer',
-                borderRadius: '3px'
-              }}
             >
               Logout
-            </button>
+            </a>
           </div>
         </div>
       </div>

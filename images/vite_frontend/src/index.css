@@ -16,11 +16,13 @@ body {
 
 /* Link styling to match docs/style */
 a {
-  text-decoration: underline;
+  text-decoration: none;
+  background-color: #F5E10E;
+  padding: 2px 5px;
 }
 
 a:hover {
-  background: yellow;
+  background: #000;
 }
 
 /* Button improvements */
@@ -62,4 +64,11 @@ th, td {
 th {
   font-weight: 600;
 }
+
+.footer a {
+  background-color:  #fff;
+  color: #aaa;
+
+}
+
 
