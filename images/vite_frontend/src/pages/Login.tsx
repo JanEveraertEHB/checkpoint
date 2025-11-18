@@ -27,7 +27,7 @@ export default function Login() {
   }
 
   return (
-    <div className="container">
+    <div className=" single_container container">
       <div className="row">
         <div className="six columns offset-by-three">
           <h2>Login</h2>

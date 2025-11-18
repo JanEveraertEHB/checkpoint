@@ -139,11 +139,11 @@ export default function Profile() {
   }
 
   if (loading) {
-    return <div className="container"><p>Loading...</p></div>
+    return <div className="single_container container"><p>Loading...</p></div>
   }
 
   return (
-    <div className="container">
+    <div className="single_container container">
       <div className="row">
         <div className="twelve columns">
           <h2>My Profile</h2>

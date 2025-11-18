@@ -1,6 +1,6 @@
 export default function Privacy() {
   return (
-    <div className="container">
+    <div className=" single_container container">
       <div className="row">
         <div className="ten columns offset-by-one">
           <h2>Privacy Policy</h2>

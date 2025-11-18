@@ -97,7 +97,7 @@ export default function Notifications() {
   const resolvedRequests = requests.filter(r => r.resolved)
 
   return (
-    <div className="container">
+    <div className="single_container container">
       <div className="row">
         <div className="twelve columns">
           <h2>Feedback Requests</h2>
