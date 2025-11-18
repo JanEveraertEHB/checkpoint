@@ -37,7 +37,6 @@ export default function Navbar() {
 
   return (
     <nav style={{
-      backgroundColor: '#FFFFFF',
       position: 'sticky',
       top: '0px',
       zIndex: 1000,
