@@ -9,29 +9,30 @@ export const formatDate = (dateString: string): string => {
 }
 
 export const getImageUrl = (filename: string): string => {
-  
-  if (window.location.href.includes("localhost")) {
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    // Remove /api suffix if present to get base URL
-    const baseUrl = apiUrl.replace(/\/api\/?$/, '')
-    console.log(baseUrl)
-    return `${baseUrl}/uploads/${filename}`
+  const extra = "/uploads/" + filename;
+  const l = location;
+
+  if (/^(localhost|127\.0\.0\.1|::1)$/.test(l.hostname)) {
+    return "/api" + extra;
   } else {
-    console.log(import.meta.env.VITE_API_URL )
-    if(import.meta.env.VITE_API_URL ) {
-      return `${import.meta.env.VITE_API_URL}/uploads/${filename}`
-    } else {
-      return ''
-    }
+    const newHost = "api." + l.hostname;
+    const base = `${l.protocol}//${newHost}`;
+    return base + extra;
   }
+
 }
 
 export const getDocumentUrl = (filename: string): string => {
-  const apiUrl = import.meta.env.VITE_API_URL || '/api'
-  // Remove /api suffix if present to get base URL
-  const baseUrl = apiUrl.replace(/\/api\/?$/, '')
-  console.log(baseUrl)
-  return `${baseUrl}/uploads/${filename}`
+  const extra = "/uploads/" + filename;
+  const l = location;
+
+  if (/^(localhost|127\.0\.0\.1|::1)$/.test(l.hostname)) {
+    return "/api" + extra;
+  } else {
+    const newHost = "api." + l.hostname;
+    const base = `${l.protocol}//${newHost}`;
+    return base + extra;
+  }
 }
 
 export const stripHtmlTags = (html: string): string => {
