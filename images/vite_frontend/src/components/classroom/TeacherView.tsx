@@ -23,8 +23,6 @@ interface TeacherViewProps {
   error: string
   canReorderCheckpoints: boolean
   onFetchInviteCode: () => void
-  onSelectStudent: (student: Student) => void
-  onRemoveStudent: (student: Student) => void
   onAddCheckpoint: (name: string, description: string) => Promise<void>
   onDeleteCheckpoint: (uuid: string) => void
   onEditCheckpoint: (uuid: string, name: string, description: string) => Promise<void>
