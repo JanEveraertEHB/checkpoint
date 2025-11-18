@@ -66,8 +66,6 @@ export default function TeacherView({
   error,
   canReorderCheckpoints,
   onFetchInviteCode,
-  onSelectStudent,
-  onRemoveStudent,
   onAddCheckpoint,
   onDeleteCheckpoint,
   onEditCheckpoint,
