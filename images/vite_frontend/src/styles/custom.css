@@ -67,10 +67,10 @@ h1, h2, h3 {
 		flex-direction: row;
 	}
 	.rightContainer {
-		width: 60vw;
+		width: 70vw;
 	}
 
 	.leftContainer {
-		width: 40vw;
+		width: 30vw;
 	}
 }
