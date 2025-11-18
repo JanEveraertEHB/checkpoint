@@ -32,7 +32,7 @@ export default function Contact() {
   }
 
   return (
-    <div className="container">
+    <div className="container single_container">
       <div className="row">
         <div className="eight columns offset-by-two">
           <h2>Contact Us</h2>

@@ -63,7 +63,7 @@ export default function Home() {
   }
 
   return (
-    <div className="container">
+    <div className="single_container container">
       <div className="row">
         <div className="twelve columns">
           <h2>My Classrooms</h2>

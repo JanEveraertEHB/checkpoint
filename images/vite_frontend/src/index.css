@@ -13,10 +13,6 @@ body {
   width: 100%;
 }
 
-/* Ensure container has proper margin-top */
-.container {
-  margin-top: 40px;
-}
 
 /* Link styling to match docs/style */
 a {

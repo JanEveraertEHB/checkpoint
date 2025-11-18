@@ -39,8 +39,10 @@ export default function Navbar() {
     <nav style={{
       backgroundColor: '#FFFFFF',
       padding: '10px 0',
-      marginBottom: '20px',
-      borderBottom: '1px solid #ddd'
+      borderBottom: '1px solid #ddd',
+      position: 'sticky',
+      top: '0px',
+      zIndex: 1000
     }}>
       <div className="container">
         <div style={{

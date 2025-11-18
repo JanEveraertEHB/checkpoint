@@ -43,6 +43,20 @@ h1, h2, h3 {
     min-height:300px;
 }
 
+.container {
+	padding: 5px;
+	width: 100%;
+	max-width: 100%;
+	margin-top: 0px;
+}
+
+
+.single_container {
+	padding: 5px;
+	width: 80%;
+	max-width: 85%;
+	margin-top: 0px;
+}
 
 .fullWidthContainer {
 	display: flex;

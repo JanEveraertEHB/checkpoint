@@ -8,7 +8,7 @@ export default function Footer() {
       marginTop: '40px',
       borderTop: '1px solid #ddd'
     }}>
-      <div className="container">
+      <div className="single_container container">
         <div className="row">
           <div className="four columns">
             <h6>Support</h6>
