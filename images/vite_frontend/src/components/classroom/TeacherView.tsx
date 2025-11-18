@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
-import { StudentList, InviteCodeDisplay } from '../classroom'
+import { InviteCodeDisplay } from '../classroom'
 import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, typography } from '../../styles/theme'
 import type { Classroom, Student, Feedback, Checkpoint } from '../../types'
@@ -126,16 +126,7 @@ export default function TeacherView({
 
   const feedbackTab = (
     <div className="row">
-      <div className="four columns">
-        <h4>Students</h4>
-        <StudentList
-          students={classroom.students || []}
-          selectedStudentUuid={selectedStudent?.uuid}
-          onSelectStudent={onSelectStudent}
-          onRemoveStudent={onRemoveStudent}
-        />
-      </div>
-      <div className="eight columns">
+      <div className="twelve columns">
         {selectedStudent ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>

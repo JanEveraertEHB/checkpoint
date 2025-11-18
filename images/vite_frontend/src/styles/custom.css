@@ -50,7 +50,6 @@ h1, h2, h3 {
 .rightContainer {
 	display: block;
 	width: 60vw;
-	padding: 50px;
 	box-sizing: border-box;
 }
 
@@ -58,6 +57,5 @@ h1, h2, h3 {
 	display: block;
 	width: 40vw;
 	left: 0vw;
-	padding: 50px;
 	box-sizing: border-box;
 }

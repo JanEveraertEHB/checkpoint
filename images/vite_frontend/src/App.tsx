@@ -85,7 +85,7 @@ function AppRoutes() {
             path="/classroom/:uuid"
             element={
               <PrivateRoute>
-                <div class="fullscreenContainer">
+                <div className="fullscreenContainer">
                   <ClassroomDetail />
                 </div>
               </PrivateRoute>
