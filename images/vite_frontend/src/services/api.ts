@@ -131,4 +131,42 @@ export const unmarkCheckpointReached = (checkpoint_uuid: string, student_uuid: s
 export const sendContactMessage = (data: { name: string; email: string; subject: string; message: string }) =>
   api.post('/contact', data)
 
+// Feedback Request APIs
+export const getFeedbackRequests = (classroom_uuid: string) =>
+  api.get(`/feedback-requests/classroom/${classroom_uuid}`)
+
+export const getFeedbackRequestCount = () =>
+  api.get<{ count: number }>('/feedback-requests/count')
+
+export const createFeedbackRequest = (classroom_uuid: string, message?: string) =>
+  api.post('/feedback-requests', { classroom_uuid, message })
+
+export const resolveFeedbackRequest = (request_uuid: string) =>
+  api.put(`/feedback-requests/${request_uuid}/resolve`)
+
+export const deleteFeedbackRequest = (request_uuid: string) =>
+  api.delete(`/feedback-requests/${request_uuid}`)
+
+// Feedback Demand APIs
+export const getFeedbackDemands = () =>
+  api.get('/feedback-demands/student')
+
+export const getFeedbackDemandCount = () =>
+  api.get<{ count: number }>('/feedback-demands/count')
+
+export const getClassroomFeedbackDemands = (classroom_uuid: string) =>
+  api.get(`/feedback-demands/classroom/${classroom_uuid}`)
+
+export const createFeedbackDemand = (classroom_uuid: string, student_uuid: string, message?: string) =>
+  api.post('/feedback-demands', { classroom_uuid, student_uuid, message })
+
+export const createClassroomWideFeedbackDemand = (classroom_uuid: string, message?: string) =>
+  api.post('/feedback-demands/classroom-wide', { classroom_uuid, message })
+
+export const fulfillFeedbackDemand = (demand_uuid: string) =>
+  api.put(`/feedback-demands/${demand_uuid}/fulfill`)
+
+export const deleteFeedbackDemand = (demand_uuid: string) =>
+  api.delete(`/feedback-demands/${demand_uuid}`)
+
 export default api

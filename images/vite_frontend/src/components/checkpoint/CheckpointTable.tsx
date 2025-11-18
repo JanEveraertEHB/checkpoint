@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Button } from '../common'
+import { colors, spacing, typography } from '../../styles/theme'
 import type { Checkpoint } from '../../types'
 
 interface CheckpointTableProps {
@@ -89,18 +91,21 @@ export default function CheckpointTable({ checkpoints, onDelete, onEdit, onReord
                     />
                   </td>
                   <td>
-                    <a
+                    <Button
+                      variant="success"
+                      size="small"
                       onClick={handleSaveEdit}
-                      style={{ color: '#28a745', cursor: 'pointer', marginRight: '10px' }}
+                      style={{ marginRight: spacing.xs }}
                     >
                       Save
-                    </a>
-                    <a
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="small"
                       onClick={handleCancelEdit}
-                      style={{ color: '#6c757d', cursor: 'pointer' }}
                     >
                       Cancel
-                    </a>
+                    </Button>
                   </td>
                 </>
               ) : (
@@ -108,14 +113,14 @@ export default function CheckpointTable({ checkpoints, onDelete, onEdit, onReord
                   <td>
                     {cp.order_index}
                     {onReorder && canReorder && (
-                      <span style={{ marginLeft: '8px' }}>
+                      <span style={{ marginLeft: spacing.sm }}>
                         <a
                           onClick={() => handleMoveUp(cp, index)}
                           style={{
-                            color: index === 0 ? '#ccc' : '#007bff',
+                            color: index === 0 ? colors.gray400 : colors.primary,
                             cursor: index === 0 ? 'not-allowed' : 'pointer',
                             marginRight: '4px',
-                            fontSize: '14px'
+                            fontSize: typography.fontSizeBase
                           }}
                         >
                           ▲
@@ -123,9 +128,9 @@ export default function CheckpointTable({ checkpoints, onDelete, onEdit, onReord
                         <a
                           onClick={() => handleMoveDown(cp, index)}
                           style={{
-                            color: index === checkpoints.length - 1 ? '#ccc' : '#007bff',
+                            color: index === checkpoints.length - 1 ? colors.gray400 : colors.primary,
                             cursor: index === checkpoints.length - 1 ? 'not-allowed' : 'pointer',
-                            fontSize: '14px'
+                            fontSize: typography.fontSizeBase
                           }}
                         >
                           ▼
@@ -137,19 +142,22 @@ export default function CheckpointTable({ checkpoints, onDelete, onEdit, onReord
                   <td>{cp.description || '-'}</td>
                   <td>
                     {onEdit && (
-                      <a
+                      <Button
+                        variant="secondary"
+                        size="small"
                         onClick={() => handleStartEdit(cp)}
-                        style={{ color: '#007bff', cursor: 'pointer', marginRight: '10px' }}
+                        style={{ marginRight: spacing.xs }}
                       >
                         Edit
-                      </a>
+                      </Button>
                     )}
-                    <a
+                    <Button
+                      variant="danger"
+                      size="small"
                       onClick={() => onDelete(cp.uuid)}
-                      style={{ color: '#dc3545', cursor: 'pointer' }}
                     >
                       Remove
-                    </a>
+                    </Button>
                   </td>
                 </>
               )}

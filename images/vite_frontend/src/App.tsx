@@ -13,6 +13,7 @@ import FAQ from './pages/FAQ'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import GDPR from './pages/GDPR'
+import Notifications from './pages/Notifications'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -102,6 +103,14 @@ function AppRoutes() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/gdpr" element={<GDPR />} />
+          <Route
+            path="/notifications"
+            element={
+              <PrivateRoute>
+                <Notifications />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </div>
       <Footer />

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Button, Alert, Timeline } from '../common'
+import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
 import { StudentList, InviteCodeDisplay } from '../classroom'
 import { formatDate, getImageUrl, stripHtmlTags } from '../../utils'
+import { colors, spacing, typography } from '../../styles/theme'
 import type { Classroom, Student, Feedback, Checkpoint } from '../../types'
 
 interface TeacherViewProps {
@@ -43,6 +44,8 @@ interface TeacherViewProps {
   canAddImages: (fb: Feedback) => boolean
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onCompleteClassroom: () => void
+  onDemandFeedback: (studentUuid: string) => void
+  onDemandFeedbackFromAll: () => void
 }
 
 export default function TeacherView({
@@ -80,8 +83,11 @@ export default function TeacherView({
   canEditFeedback,
   canAddImages,
   timelineItems,
-  onCompleteClassroom
+  onCompleteClassroom,
+  onDemandFeedback,
+  onDemandFeedbackFromAll
 }: TeacherViewProps) {
+  const [activeTab, setActiveTab] = useState('feedback')
   const [showAddCheckpoint, setShowAddCheckpoint] = useState(false)
   const [newCheckpointName, setNewCheckpointName] = useState('')
   const [newCheckpointDescription, setNewCheckpointDescription] = useState('')
@@ -108,6 +114,167 @@ export default function TeacherView({
     }
   }
 
+  const feedbackTab = (
+    <div className="row">
+      <div className="four columns">
+        <h4>Students</h4>
+        <StudentList
+          students={classroom.students || []}
+          selectedStudentUuid={selectedStudent?.uuid}
+          onSelectStudent={onSelectStudent}
+          onRemoveStudent={onRemoveStudent}
+        />
+      </div>
+      <div className="eight columns">
+        {selectedStudent ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <h4 style={{ margin: 0 }}>{selectedStudent.first_name} {selectedStudent.last_name}</h4>
+              {!isCompleted && selectedStudent.active !== false && (
+                <Button
+                  variant="primary"
+                  onClick={() => onDemandFeedback(selectedStudent.uuid)}
+                >
+                  Ask for an update
+                </Button>
+              )}
+            </div>
+
+            <CheckpointProgress
+              checkpoints={studentProgress}
+              onToggle={onToggleCheckpoint}
+              editable={!isCompleted}
+            />
+
+            {!isCompleted && selectedStudent.active !== false && (
+              <FeedbackForm
+                value={newFeedback}
+                onChange={onNewFeedbackChange}
+                onSubmit={handleAddFeedback}
+                label="Add Feedback"
+                placeholder="Write your feedback here..."
+              />
+            )}
+
+            {selectedStudent.active === false && (
+              <Alert type="warning">
+                This student has left the classroom. No new feedback can be added.
+              </Alert>
+            )}
+
+            <h5>Timeline</h5>
+            <Timeline
+              items={timelineItems}
+              emptyMessage="No feedback or checkpoints yet for this student."
+              renderCheckpointItem={(cp) => (
+                <>
+                  <p style={{ margin: 0, fontWeight: 'bold', color: '#4CAF50' }}>
+                    Checkpoint Reached: {cp.name}
+                  </p>
+                  <small style={{ color: '#666' }}>
+                    {formatDate(cp.reached_at || '')}
+                  </small>
+                </>
+              )}
+              renderFeedbackItem={(fb) => (
+                <FeedbackItem
+                  feedback={fb}
+                  isEditing={editingFeedbackUuid === fb.uuid}
+                  editContent={editFeedbackContent}
+                  canEdit={canEditFeedback(fb)}
+                  canLock={true}
+                  canUploadImages={canAddImages(fb)}
+                  isUploadingImages={uploadingImagesFeedbackUuid === fb.uuid}
+                  onEditStart={() => onStartEditFeedback(fb)}
+                  onEditCancel={onCancelEditFeedback}
+                  onEditSave={onSaveEditFeedback}
+                  onEditContentChange={onEditContentChange}
+                  onLockToggle={() => onToggleLockFeedback(fb.uuid, fb.locked)}
+                  onImageDelete={onDeleteImage}
+                  onImageUpload={(files) => onImageUpload(fb.uuid, files)}
+                  onStartImageUpload={() => onStartImageUpload(fb.uuid)}
+                  onCancelImageUpload={onCancelImageUpload}
+                  getImageUrl={getImageUrl}
+                  formatDate={formatDate}
+                />
+              )}
+            />
+          </>
+        ) : (
+          <p>Select a student to view and add feedback.</p>
+        )}
+      </div>
+    </div>
+  )
+
+  const settingsTab = (
+    <>
+      <h4>Classroom Settings</h4>
+
+      <div style={{ marginBottom: spacing.lg }}>
+        <h5>Invite Students</h5>
+        <Button onClick={onFetchInviteCode}>
+          {showInviteCode ? 'Refresh Invite Code' : 'Get Invite Link'}
+        </Button>
+        {showInviteCode && <InviteCodeDisplay code={inviteCode} />}
+      </div>
+
+      <div style={{ marginBottom: spacing.lg }}>
+        <h5>Checkpoints</h5>
+        {!isCompleted && (
+          <Button
+            onClick={() => setShowAddCheckpoint(!showAddCheckpoint)}
+            style={{ marginBottom: spacing.sm }}
+          >
+            {showAddCheckpoint ? 'Cancel' : 'Add Checkpoint'}
+          </Button>
+        )}
+
+        {showAddCheckpoint && (
+          <CheckpointForm
+            name={newCheckpointName}
+            description={newCheckpointDescription}
+            onNameChange={setNewCheckpointName}
+            onDescriptionChange={setNewCheckpointDescription}
+            onSubmit={handleAddCheckpoint}
+            onCancel={() => setShowAddCheckpoint(false)}
+          />
+        )}
+
+        <CheckpointTable
+          checkpoints={checkpoints}
+          onDelete={handleDeleteCheckpoint}
+          onEdit={onEditCheckpoint}
+          onReorder={onReorderCheckpoint}
+          canReorder={canReorderCheckpoints}
+        />
+      </div>
+
+      {!isCompleted && (
+        <div>
+          <h5>Classroom Status</h5>
+          <Button variant="warning" onClick={onCompleteClassroom}>
+            Mark Classroom as Completed
+          </Button>
+          <p style={{
+            fontSize: typography.fontSizeBase,
+            color: colors.textSecondary,
+            marginTop: spacing.sm
+          }}>
+            Marking as completed will prevent any new feedback from being added.
+          </p>
+        </div>
+      )}
+    </>
+  )
+
+  const notesTab = (
+    <>
+      <h4>Notes</h4>
+      <p style={{ color: '#666' }}>Notes feature coming soon...</p>
+    </>
+  )
+
   return (
     <>
       {error && <Alert type="error">{error}</Alert>}
@@ -118,122 +285,15 @@ export default function TeacherView({
         </Alert>
       )}
 
-      <div style={{ marginBottom: '20px' }}>
-        <Button onClick={onFetchInviteCode} style={{ marginRight: '10px' }}>
-          {showInviteCode ? 'Refresh Invite Code' : 'Get Invite Link'}
-        </Button>
-        {!isCompleted && (
-          <>
-            <Button onClick={() => setShowAddCheckpoint(!showAddCheckpoint)} style={{ marginRight: '10px' }}>
-              {showAddCheckpoint ? 'Cancel' : 'Add Checkpoint'}
-            </Button>
-            <Button variant="warning" onClick={onCompleteClassroom}>
-              Mark as Completed
-            </Button>
-          </>
-        )}
-        {showInviteCode && <InviteCodeDisplay code={inviteCode} />}
-      </div>
-
-      {showAddCheckpoint && (
-        <CheckpointForm
-          name={newCheckpointName}
-          description={newCheckpointDescription}
-          onNameChange={setNewCheckpointName}
-          onDescriptionChange={setNewCheckpointDescription}
-          onSubmit={handleAddCheckpoint}
-          onCancel={() => setShowAddCheckpoint(false)}
-        />
-      )}
-
-      <CheckpointTable
-        checkpoints={checkpoints}
-        onDelete={handleDeleteCheckpoint}
-        onEdit={onEditCheckpoint}
-        onReorder={onReorderCheckpoint}
-        canReorder={canReorderCheckpoints}
+      <Tabs
+        tabs={[
+          { id: 'feedback', label: 'Feedback', content: feedbackTab },
+          { id: 'notes', label: 'Notes', content: notesTab },
+          { id: 'settings', label: 'Settings', content: settingsTab },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
-
-      <div className="row">
-        <div className="four columns">
-          <h4>Students</h4>
-          <StudentList
-            students={classroom.students || []}
-            selectedStudentUuid={selectedStudent?.uuid}
-            onSelectStudent={onSelectStudent}
-            onRemoveStudent={onRemoveStudent}
-          />
-        </div>
-        <div className="eight columns">
-          {selectedStudent ? (
-            <>
-              <h4>{selectedStudent.first_name} {selectedStudent.last_name}</h4>
-
-              <CheckpointProgress
-                checkpoints={studentProgress}
-                onToggle={onToggleCheckpoint}
-                editable={!isCompleted}
-              />
-
-              {!isCompleted && selectedStudent.active !== false && (
-                <FeedbackForm
-                  value={newFeedback}
-                  onChange={onNewFeedbackChange}
-                  onSubmit={handleAddFeedback}
-                  label="Add Feedback"
-                  placeholder="Write your feedback here..."
-                />
-              )}
-
-              {selectedStudent.active === false && (
-                <Alert type="warning">
-                  This student has left the classroom. No new feedback can be added.
-                </Alert>
-              )}
-
-              <h5>Timeline</h5>
-              <Timeline
-                items={timelineItems}
-                emptyMessage="No feedback or checkpoints yet for this student."
-                renderCheckpointItem={(cp) => (
-                  <>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: '#4CAF50' }}>
-                      Checkpoint Reached: {cp.name}
-                    </p>
-                    <small style={{ color: '#666' }}>
-                      {formatDate(cp.reached_at || '')}
-                    </small>
-                  </>
-                )}
-                renderFeedbackItem={(fb) => (
-                  <FeedbackItem
-                    feedback={fb}
-                    isEditing={editingFeedbackUuid === fb.uuid}
-                    editContent={editFeedbackContent}
-                    canEdit={canEditFeedback(fb)}
-                    canLock={true}
-                    canUploadImages={canAddImages(fb)}
-                    isUploadingImages={uploadingImagesFeedbackUuid === fb.uuid}
-                    onEditStart={() => onStartEditFeedback(fb)}
-                    onEditCancel={onCancelEditFeedback}
-                    onEditSave={onSaveEditFeedback}
-                    onEditContentChange={onEditContentChange}
-                    onLockToggle={() => onToggleLockFeedback(fb.uuid, fb.locked)}
-                    onImageDelete={onDeleteImage}
-                    onImageUpload={(files) => onImageUpload(fb.uuid, files)}
-                    onStartImageUpload={() => onStartImageUpload(fb.uuid)}
-                    onCancelImageUpload={onCancelImageUpload}
-                    getImageUrl={getImageUrl}
-                    formatDate={formatDate}
-                  />
-                )}
-              />
-            </>
-          ) : (
-            <p>Select a student to view and add feedback.</p>
-          )}
-        </div>
-      </div>
     </>
   )
 }

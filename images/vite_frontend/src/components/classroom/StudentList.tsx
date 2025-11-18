@@ -1,3 +1,5 @@
+import { Button } from '../common'
+import { colors, spacing, typography } from '../../styles/theme'
 import type { Student } from '../../types'
 
 interface StudentListProps {
@@ -14,7 +16,7 @@ export default function StudentList({
   onRemoveStudent
 }: StudentListProps) {
   if (students.length === 0) {
-    return <p>No students yet. Share the invite code.</p>
+    return <p style={{ color: colors.textSecondary }}>No students yet. Share the invite code.</p>
   }
 
   // Sort: active students first, then inactive
@@ -33,9 +35,9 @@ export default function StudentList({
           <li
             key={student.uuid}
             style={{
-              padding: '10px',
-              marginBottom: '5px',
-              backgroundColor: selectedStudentUuid === student.uuid ? '#ddd' : '#f9f9f9',
+              padding: spacing.sm,
+              marginBottom: spacing.xs,
+              backgroundColor: selectedStudentUuid === student.uuid ? colors.gray300 : colors.bgLight,
               cursor: 'pointer',
               opacity: isActive ? 1 : 0.5,
               display: 'flex',
@@ -45,22 +47,23 @@ export default function StudentList({
           >
             <span onClick={() => onSelectStudent(student)}>
               {student.first_name} {student.last_name}
-              {!isActive && <span style={{ color: '#999', fontSize: '0.8rem' }}> (inactive)</span>}
+              {!isActive && (
+                <span style={{ color: colors.textMuted, fontSize: typography.fontSizeSm }}>
+                  {' '}(inactive)
+                </span>
+              )}
             </span>
             {onRemoveStudent && isActive && (
-              <a
+              <Button
+                variant="danger"
+                size="small"
                 onClick={(e) => {
                   e.stopPropagation()
                   onRemoveStudent(student)
                 }}
-                style={{
-                  color: '#dc3545',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem'
-                }}
               >
                 Remove
-              </a>
+              </Button>
             )}
           </li>
         )

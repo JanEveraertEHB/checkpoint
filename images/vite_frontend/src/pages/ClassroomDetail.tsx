@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useClassroom, useCheckpoints, useFeedback, useTimeline } from '../hooks'
 import { Loading } from '../components/common'
 import { ClassroomHeader, TeacherView, StudentView } from '../components/classroom'
-import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom } from '../services/api'
+import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom, createFeedbackRequest, createFeedbackDemand, createClassroomWideFeedbackDemand } from '../services/api'
 import type { Student } from '../types'
 
 export default function ClassroomDetail() {
@@ -226,6 +226,40 @@ export default function ClassroomDetail() {
     }
   }
 
+  // Handle requesting feedback (student only)
+  const handleRequestFeedback = async () => {
+    try {
+      await createFeedbackRequest(uuid!)
+      alert('Feedback request sent to your teacher!')
+    } catch (err) {
+      setClassroomError('Failed to send feedback request')
+    }
+  }
+
+  // Handle demanding feedback (teacher only)
+  const handleDemandFeedback = async (studentUuid: string) => {
+    try {
+      await createFeedbackDemand(uuid!, studentUuid)
+      alert('Feedback demand sent to the student!')
+    } catch (err) {
+      setClassroomError('Failed to send feedback demand')
+    }
+  }
+
+  // Handle demanding feedback from all students (teacher only)
+  const handleDemandFeedbackFromAll = async () => {
+    if (!confirm('Are you sure you want to send a feedback demand to all active students in this classroom?')) {
+      return
+    }
+
+    try {
+      const response = await createClassroomWideFeedbackDemand(uuid!)
+      alert(response.data.message)
+    } catch (err) {
+      setClassroomError('Failed to send feedback demands')
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
@@ -242,7 +276,11 @@ export default function ClassroomDetail() {
     <div className="container">
       <div className="row">
         <div className="twelve columns">
-          <ClassroomHeader classroom={classroom} />
+          <ClassroomHeader
+            classroom={classroom}
+            onDemandFeedbackFromAll={classroom.role === 'teacher' ? handleDemandFeedbackFromAll : undefined}
+            onRequestFeedback={classroom.role === 'student' ? handleRequestFeedback : undefined}
+          />
 
           {classroom.role === 'teacher' ? (
             <TeacherView
@@ -281,6 +319,8 @@ export default function ClassroomDetail() {
               canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
               timelineItems={timelineItems}
               onCompleteClassroom={handleCompleteClassroom}
+              onDemandFeedback={handleDemandFeedback}
+              onDemandFeedbackFromAll={handleDemandFeedbackFromAll}
             />
           ) : (
             <StudentView
@@ -308,6 +348,7 @@ export default function ClassroomDetail() {
               timelineItems={timelineItems}
               onLeaveClassroom={handleLeaveClassroom}
               onRejoinClassroom={handleRejoinClassroom}
+              onRequestFeedback={handleRequestFeedback}
             />
           )}
         </div>

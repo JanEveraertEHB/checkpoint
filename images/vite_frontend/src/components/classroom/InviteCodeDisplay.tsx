@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../common'
+import { colors, spacing, borderRadius, typography } from '../../styles/theme'
 
 interface InviteCodeDisplayProps {
   code: string
@@ -17,23 +19,30 @@ export default function InviteCodeDisplay({ code }: InviteCodeDisplayProps) {
   }
 
   return (
-    <div style={{ marginTop: '10px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-      <div style={{ marginBottom: '10px' }}>
+    <div style={{
+      marginTop: spacing.sm,
+      padding: spacing.md,
+      backgroundColor: colors.bgMuted,
+      borderRadius: borderRadius.md
+    }}>
+      <div style={{ marginBottom: spacing.sm }}>
         <strong>Invite Code:</strong>{' '}
-        <code style={{ backgroundColor: '#fff', padding: '2px 6px', borderRadius: '3px' }}>{code}</code>
-        <button
+        <code style={{
+          backgroundColor: colors.white,
+          padding: '2px 6px',
+          borderRadius: borderRadius.sm
+        }}>
+          {code}
+        </code>
+        <Button
+          size="small"
           onClick={() => copyToClipboard(code, 'code')}
-          style={{
-            marginLeft: '10px',
-            padding: '2px 8px',
-            fontSize: '12px',
-            cursor: 'pointer'
-          }}
+          style={{ marginLeft: spacing.sm }}
         >
           {copied === 'code' ? 'Copied!' : 'Copy Code'}
-        </button>
+        </Button>
       </div>
-      <div style={{ marginBottom: '10px' }}>
+      <div style={{ marginBottom: spacing.sm }}>
         <strong>Invite Link:</strong><br />
         <input
           type="text"
@@ -41,27 +50,24 @@ export default function InviteCodeDisplay({ code }: InviteCodeDisplayProps) {
           readOnly
           style={{
             width: '100%',
-            padding: '5px',
-            marginTop: '5px',
-            marginBottom: '5px',
-            backgroundColor: '#fff',
-            border: '1px solid #ddd',
-            borderRadius: '3px'
+            padding: spacing.xs,
+            marginTop: spacing.xs,
+            marginBottom: spacing.xs,
+            backgroundColor: colors.white,
+            border: `1px solid ${colors.border}`,
+            borderRadius: borderRadius.sm,
+            fontSize: typography.fontSizeBase
           }}
           onClick={(e) => (e.target as HTMLInputElement).select()}
         />
-        <button
+        <Button
+          size="small"
           onClick={() => copyToClipboard(inviteLink, 'link')}
-          style={{
-            padding: '2px 8px',
-            fontSize: '12px',
-            cursor: 'pointer'
-          }}
         >
           {copied === 'link' ? 'Copied!' : 'Copy Link'}
-        </button>
+        </Button>
       </div>
-      <small style={{ color: '#666' }}>
+      <small style={{ color: colors.textSecondary, fontSize: typography.fontSizeSm }}>
         Share this code or link with students to join this classroom
       </small>
     </div>
