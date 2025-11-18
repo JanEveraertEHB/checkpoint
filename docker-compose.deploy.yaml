@@ -28,9 +28,7 @@ services:
 
   # Frontend (Vite app served by nginx)
   frontend:
-    build:
-      context: ./images/vite_frontend
-      dockerfile: Dockerfile
+    image: tastbaar/checkpoint-frontend:latest
     container_name: frontend
     depends_on:
       - api
@@ -48,12 +46,12 @@ services:
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # API Backend
-  api:
-    build:
-      context: ./images/api
-      dockerfile: Dockerfile
+  api:    
+    image: tastbaar/checkpoint-api:latest
     container_name: api
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -85,6 +83,8 @@ services:
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
       - "traefik.http.services.api.loadbalancer.server.port=3000"
+      # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # PostgreSQL Database
   db:
@@ -104,6 +104,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: checkpoint-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    restart: unless-stopped
+    networks:
+      - backend
 
 networks:
   backend:
