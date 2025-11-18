@@ -17,7 +17,7 @@ export default function ClassroomHeader({ classroom, onDemandFeedbackFromAll, on
   return (
     <>
       <Link to="/home">Back to My Classrooms</Link>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: "column", gap: "20px", justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
         <div>
           <h2 style={{ marginBottom: '10px' }}>{classroom.name}</h2>
           <p style={{ marginBottom: 0 }}>

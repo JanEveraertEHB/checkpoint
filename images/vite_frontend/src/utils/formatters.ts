@@ -15,6 +15,13 @@ export const getImageUrl = (filename: string): string => {
   return `${baseUrl}/uploads/${filename}`
 }
 
+export const getDocumentUrl = (filename: string): string => {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api'
+  // Remove /api suffix if present to get base URL
+  const baseUrl = apiUrl.replace(/\/api\/?$/, '')
+  return `${baseUrl}/uploads/${filename}`
+}
+
 export const stripHtmlTags = (html: string): string => {
   return html.replace(/<[^>]*>/g, '').trim()
 }

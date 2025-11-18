@@ -47,6 +47,18 @@ export interface FeedbackImage {
   updated_at: string
 }
 
+export interface FeedbackDocument {
+  id: number
+  uuid: string
+  feedback_uuid: string
+  filename: string
+  original_name: string
+  mimetype: string
+  size: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Feedback {
   id: number
   uuid: string
@@ -60,6 +72,7 @@ export interface Feedback {
   created_by_first_name: string
   created_by_last_name: string
   images?: FeedbackImage[]
+  documents?: FeedbackDocument[]
 }
 
 export interface Checkpoint {

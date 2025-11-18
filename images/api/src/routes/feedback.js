@@ -73,12 +73,17 @@ router.get('/classroom/:classroom_uuid/student/:student_uuid', decodeToken, asyn
       )
       .orderBy('feedback.created_at', 'desc');
 
-    // Get images for each feedback
+    // Get images and documents for each feedback
     for (let fb of feedback) {
       const images = await pg.get()('feedback_images')
         .where({ feedback_uuid: fb.uuid })
         .select('*');
       fb.images = images;
+
+      const documents = await pg.get()('feedback_documents')
+        .where({ feedback_uuid: fb.uuid })
+        .select('*');
+      fb.documents = documents;
     }
 
     res.status(200).send(feedback);
@@ -116,12 +121,17 @@ router.get('/classroom/:classroom_uuid/my-feedback', decodeToken, async (req, re
       )
       .orderBy('feedback.created_at', 'desc');
 
-    // Get images for each feedback
+    // Get images and documents for each feedback
     for (let fb of feedback) {
       const images = await pg.get()('feedback_images')
         .where({ feedback_uuid: fb.uuid })
         .select('*');
       fb.images = images;
+
+      const documents = await pg.get()('feedback_documents')
+        .where({ feedback_uuid: fb.uuid })
+        .select('*');
+      fb.documents = documents;
     }
 
     res.status(200).send(feedback);
@@ -407,6 +417,122 @@ router.delete('/images/:image_uuid', decodeToken, async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(500).send({ message: "Error deleting image" });
+  }
+});
+
+// Upload documents for feedback
+router.post('/:uuid/documents', decodeToken, upload.array('documents', 10), async (req, res) => {
+  try {
+    const userUuid = req.user.uuid;
+    const feedbackUuid = req.params.uuid;
+
+    const feedback = await pg.get()('feedback')
+      .where({ uuid: feedbackUuid })
+      .first();
+
+    if (!feedback) {
+      return res.status(404).send({ message: "Feedback not found" });
+    }
+
+    // Check if user created this feedback
+    if (feedback.created_by_uuid !== userUuid) {
+      return res.status(403).send({ message: "Can only add documents to your own feedback" });
+    }
+
+    // Check membership
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
+      .first();
+
+    if (!membership) {
+      return res.status(403).send({ message: "Not a member of this classroom" });
+    }
+
+    // Students can't add documents if feedback is locked
+    if (membership.role === 'student' && feedback.locked) {
+      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send({ message: "No documents uploaded" });
+    }
+
+    const documentRecords = [];
+    for (const file of req.files) {
+      const documentData = {
+        uuid: uuidv4(),
+        feedback_uuid: feedbackUuid,
+        filename: file.filename,
+        original_name: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      };
+
+      const [document] = await pg.get()('feedback_documents')
+        .insert(documentData)
+        .returning('*');
+
+      documentRecords.push(document);
+    }
+
+    res.status(200).send({ documents: documentRecords, message: "success" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error uploading documents" });
+  }
+});
+
+// Delete a document from feedback
+router.delete('/documents/:document_uuid', decodeToken, async (req, res) => {
+  try {
+    const userUuid = req.user.uuid;
+    const documentUuid = req.params.document_uuid;
+
+    const document = await pg.get()('feedback_documents')
+      .where({ uuid: documentUuid })
+      .first();
+
+    if (!document) {
+      return res.status(404).send({ message: "Document not found" });
+    }
+
+    const feedback = await pg.get()('feedback')
+      .where({ uuid: document.feedback_uuid })
+      .first();
+
+    if (!feedback) {
+      return res.status(404).send({ message: "Feedback not found" });
+    }
+
+    // Check if user created this feedback
+    if (feedback.created_by_uuid !== userUuid) {
+      return res.status(403).send({ message: "Can only delete documents from your own feedback" });
+    }
+
+    // Check membership
+    const membership = await pg.get()('classroom_members')
+      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
+      .first();
+
+    if (membership.role === 'student' && feedback.locked) {
+      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
+    }
+
+    // Delete file from disk
+    const filePath = path.join(uploadDir, document.filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Delete from database
+    await pg.get()('feedback_documents')
+      .where({ uuid: documentUuid })
+      .delete();
+
+    res.status(200).send({ message: "success" });
+  } catch (e) {
+    console.log(e);
+    res.status(500).send({ message: "Error deleting document" });
   }
 });
 

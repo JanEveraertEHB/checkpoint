@@ -47,6 +47,11 @@ router.post('/login', async (req, res) => {
       try {
         const data = await pg.get()("users").select("*").where({ email: req.body.email });
         if(data.length > 0) {
+          // Check if account is deleted
+          if (data[0].deleted_at) {
+            return res.status(403).send({ "message": "This account has been deleted" });
+          }
+
           const validPassword = await bcrypt.compare(req.body.password, data[0].password);
           if (validPassword) {
             pg.logAction("login", info, data[0].uuid);
@@ -77,6 +82,15 @@ router.post('/register', async (req, res) => {
   if(req.body) {
     if(checkBodyFields(req.body, ["first_name", "last_name", "email", "password"])) {
       try {
+        // Check if email already exists
+        const existingUser = await pg.get()("users")
+          .where({ email: req.body.email })
+          .first();
+
+        if (existingUser) {
+          return res.status(400).send({ message: "Email already in use" });
+        }
+
         const hashedPassword = await bcrypt.hash(req.body.password, SALT_ROUNDS);
         const userData = {
           uuid: uuidv4(),
@@ -97,7 +111,11 @@ router.post('/register', async (req, res) => {
         res.status(200).send({...userWithoutPassword, token, message: "success"})
       } catch(e) {
         console.log(e)
-        res.status(501).send()
+        // Check if it's a unique constraint error
+        if (e.code === '23505' || e.constraint === 'users_email_unique') {
+          return res.status(400).send({ message: "Email already in use" });
+        }
+        res.status(501).send({ message: "Registration failed" })
       }
     }
     else {
@@ -206,6 +224,97 @@ router.put('/password', decodeToken, async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(500).send({ message: "Error updating password" });
+  }
+});
+
+// Delete account
+router.delete('/account', decodeToken, async (req, res) => {
+  const trx = await pg.get().transaction();
+
+  try {
+    const userUuid = req.user.uuid;
+
+    // Check if user exists and is not already deleted
+    const user = await trx('users')
+      .where({ uuid: userUuid })
+      .whereNull('deleted_at')
+      .first();
+
+    if (!user) {
+      await trx.rollback();
+      return res.status(404).send({ message: "User not found or already deleted" });
+    }
+
+    // Anonymize user data
+    await trx('users')
+      .where({ uuid: userUuid })
+      .update({
+        first_name: '[Deleted]',
+        last_name: 'User',
+        email: `deleted_${userUuid}@deleted.local`,
+        password: await bcrypt.hash(uuidv4(), SALT_ROUNDS), // Random unguessable password
+        deleted_at: new Date(),
+        date_of_birth: null
+      });
+
+    // Update all feedback items created by this user to show account removal
+    await trx('feedback')
+      .where({ created_by_uuid: userUuid })
+      .update({
+        content: '[Student account removed]'
+      });
+
+    // Delete feedback images created by this user
+    await trx('feedback_images')
+      .whereIn('feedback_uuid', function() {
+        this.select('uuid')
+          .from('feedback')
+          .where({ created_by_uuid: userUuid });
+      })
+      .delete();
+
+    // Delete feedback documents created by this user (if table exists)
+    const hasDocumentsTable = await trx.schema.hasTable('feedback_documents');
+    if (hasDocumentsTable) {
+      await trx('feedback_documents')
+        .whereIn('feedback_uuid', function() {
+          this.select('uuid')
+            .from('feedback')
+            .where({ created_by_uuid: userUuid });
+        })
+        .delete();
+    }
+
+    // Mark user as inactive in all classrooms
+    await trx('classroom_members')
+      .where({ user_uuid: userUuid })
+      .update({ active: false });
+
+    // Delete feedback requests by this user
+    const hasFeedbackRequestsTable = await trx.schema.hasTable('feedback_requests');
+    if (hasFeedbackRequestsTable) {
+      await trx('feedback_requests')
+        .where({ student_uuid: userUuid })
+        .delete();
+    }
+
+    // Delete feedback demands for this user
+    const hasFeedbackDemandsTable = await trx.schema.hasTable('feedback_demands');
+    if (hasFeedbackDemandsTable) {
+      await trx('feedback_demands')
+        .where({ student_uuid: userUuid })
+        .delete();
+    }
+
+    // Log the deletion action
+    pg.logAction("account_deleted", { user_uuid: userUuid }, userUuid);
+
+    await trx.commit();
+    res.status(200).send({ message: "Account deleted successfully" });
+  } catch (e) {
+    await trx.rollback();
+    console.log(e);
+    res.status(500).send({ message: "Error deleting account" });
   }
 });
 

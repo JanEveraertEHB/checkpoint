@@ -6,7 +6,9 @@ import {
   updateFeedback,
   lockFeedback,
   uploadFeedbackImages,
-  deleteFeedbackImage
+  deleteFeedbackImage,
+  uploadFeedbackDocuments,
+  deleteFeedbackDocument
 } from '../services/api'
 import type { Feedback, User, Classroom } from '../types'
 
@@ -15,6 +17,7 @@ export function useFeedback(classroomUuid: string | undefined) {
   const [editingFeedbackUuid, setEditingFeedbackUuid] = useState<string | null>(null)
   const [editFeedbackContent, setEditFeedbackContent] = useState('')
   const [uploadingImagesFeedbackUuid, setUploadingImagesFeedbackUuid] = useState<string | null>(null)
+  const [uploadingDocumentsFeedbackUuid, setUploadingDocumentsFeedbackUuid] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   const fetchMyFeedback = useCallback(async () => {
@@ -87,6 +90,25 @@ export function useFeedback(classroomUuid: string | undefined) {
     }
   }, [])
 
+  const uploadDocuments = useCallback(async (feedbackUuid: string, files: FileList) => {
+    try {
+      await uploadFeedbackDocuments(feedbackUuid, files)
+      setUploadingDocumentsFeedbackUuid(null)
+    } catch (err) {
+      setError('Failed to upload documents')
+      throw err
+    }
+  }, [])
+
+  const deleteDocument = useCallback(async (documentUuid: string) => {
+    try {
+      await deleteFeedbackDocument(documentUuid)
+    } catch (err) {
+      setError('Failed to delete document')
+      throw err
+    }
+  }, [])
+
   const startEditFeedback = useCallback((fb: Feedback) => {
     setEditingFeedbackUuid(fb.uuid)
     setEditFeedbackContent(fb.content)
@@ -111,15 +133,24 @@ export function useFeedback(classroomUuid: string | undefined) {
     return true
   }, [])
 
+  const canAddDocumentsToFeedback = useCallback((fb: Feedback, user: User | null, classroom: Classroom | null) => {
+    if (!user) return false
+    if (fb.created_by_uuid !== user.uuid) return false
+    if (classroom?.role === 'student' && fb.locked) return false
+    return true
+  }, [])
+
   return {
     feedback,
     editingFeedbackUuid,
     editFeedbackContent,
     uploadingImagesFeedbackUuid,
+    uploadingDocumentsFeedbackUuid,
     error,
     setError,
     setEditFeedbackContent,
     setUploadingImagesFeedbackUuid,
+    setUploadingDocumentsFeedbackUuid,
     fetchMyFeedback,
     fetchStudentFeedback,
     addFeedback,
@@ -127,9 +158,12 @@ export function useFeedback(classroomUuid: string | undefined) {
     toggleFeedbackLock,
     uploadImages,
     deleteImage,
+    uploadDocuments,
+    deleteDocument,
     startEditFeedback,
     cancelEditFeedback,
     canEditFeedback,
-    canAddImagesToFeedback
+    canAddImagesToFeedback,
+    canAddDocumentsToFeedback
   }
 }

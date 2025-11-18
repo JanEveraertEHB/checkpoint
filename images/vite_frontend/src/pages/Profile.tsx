@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { getProfile, updateProfile, changePassword } from '../services/api'
+import { useNavigate } from 'react-router-dom'
+import { getProfile, updateProfile, changePassword, deleteAccount } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 import MD5 from 'crypto-js/md5'
 
 export default function Profile() {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +26,11 @@ export default function Profile() {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
+
+  // Account deletion
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchProfile()
@@ -111,6 +120,24 @@ export default function Profile() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      return
+    }
+
+    setDeleting(true)
+
+    try {
+      await deleteAccount()
+      logout()
+      navigate('/')
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      setError(error.response?.data?.message || 'Failed to delete account')
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return <div className="container"><p>Loading...</p></div>
   }
@@ -177,7 +204,7 @@ export default function Profile() {
             </form>
           </div>
 
-          <div style={{ padding: '20px', border: '1px solid #ddd' }}>
+          <div style={{ padding: '20px', border: '1px solid #ddd', marginBottom: '30px' }}>
             <h4>Change Password</h4>
             {passwordError && <p style={{ color: 'red' }}>{passwordError}</p>}
             {passwordSuccess && <p style={{ color: 'green' }}>{passwordSuccess}</p>}
@@ -216,6 +243,70 @@ export default function Profile() {
                 {changingPassword ? 'Changing...' : 'Change Password'}
               </button>
             </form>
+          </div>
+
+          <div style={{ padding: '20px', border: '2px solid #dc3545', backgroundColor: '#fff5f5' }}>
+            <h4 style={{ color: '#dc3545' }}>Delete Account</h4>
+            <p style={{ color: '#666', marginBottom: '15px' }}>
+              <strong>Warning:</strong> This action cannot be undone. When you delete your account:
+            </p>
+            <ul style={{ color: '#666', marginBottom: '15px' }}>
+              <li>Your personal information will be permanently removed</li>
+              <li>Your feedback content will be replaced with "[Student account removed]"</li>
+              <li>Teachers will still see you listed as a removed student</li>
+              <li>All your uploaded images and documents will be deleted</li>
+            </ul>
+
+            {!showDeleteConfirm ? (
+              <button
+                className="button"
+                style={{ backgroundColor: '#dc3545', borderColor: '#dc3545' }}
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete My Account
+              </button>
+            ) : (
+              <div>
+                <p style={{ color: '#dc3545', fontWeight: 'bold', marginBottom: '10px' }}>
+                  Are you absolutely sure? This cannot be undone!
+                </p>
+                <p style={{ marginBottom: '10px' }}>
+                  Type <strong>DELETE</strong> to confirm:
+                </p>
+                <input
+                  className="u-full-width"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE to confirm"
+                  style={{ marginBottom: '10px' }}
+                />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    className="button"
+                    style={{
+                      backgroundColor: '#dc3545',
+                      borderColor: '#dc3545',
+                      opacity: deleteConfirmText === 'DELETE' ? 1 : 0.5
+                    }}
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmText !== 'DELETE' || deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Confirm Delete Account'}
+                  </button>
+                  <button
+                    className="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false)
+                      setDeleteConfirmText('')
+                    }}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

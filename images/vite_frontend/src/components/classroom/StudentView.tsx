@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Alert, Timeline, Button, Tabs } from '../common'
 import { NextCheckpointCard, CheckpointBadges } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
-import { formatDate, getImageUrl, stripHtmlTags } from '../../utils'
+import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, borderRadius, typography } from '../../styles/theme'
 import type { Feedback, Checkpoint } from '../../types'
 import { getFeedbackDemands, fulfillFeedbackDemand, deleteFeedbackDemand } from '../../services/api'
@@ -30,6 +30,7 @@ interface StudentViewProps {
   editingFeedbackUuid: string | null
   editFeedbackContent: string
   uploadingImagesFeedbackUuid: string | null
+  uploadingDocumentsFeedbackUuid: string | null
   error: string
   isCompleted: boolean
   isActive: boolean
@@ -43,8 +44,13 @@ interface StudentViewProps {
   onDeleteImage: (uuid: string) => void
   onStartImageUpload: (feedbackUuid: string) => void
   onCancelImageUpload: () => void
+  onDocumentUpload: (feedbackUuid: string, files: FileList | null) => void
+  onDeleteDocument: (uuid: string) => void
+  onStartDocumentUpload: (feedbackUuid: string) => void
+  onCancelDocumentUpload: () => void
   canEditFeedback: (fb: Feedback) => boolean
   canAddImages: (fb: Feedback) => boolean
+  canAddDocuments: (fb: Feedback) => boolean
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onLeaveClassroom: () => void
   onRejoinClassroom: () => void
@@ -57,6 +63,7 @@ export default function StudentView({
   editingFeedbackUuid,
   editFeedbackContent,
   uploadingImagesFeedbackUuid,
+  uploadingDocumentsFeedbackUuid,
   error,
   isCompleted,
   isActive,
@@ -70,8 +77,13 @@ export default function StudentView({
   onDeleteImage,
   onStartImageUpload,
   onCancelImageUpload,
+  onDocumentUpload,
+  onDeleteDocument,
+  onStartDocumentUpload,
+  onCancelDocumentUpload,
   canEditFeedback,
   canAddImages,
+  canAddDocuments,
   timelineItems,
   onLeaveClassroom,
   onRejoinClassroom
@@ -230,6 +242,8 @@ export default function StudentView({
             canLock={false}
             canUploadImages={canAddImages(fb)}
             isUploadingImages={uploadingImagesFeedbackUuid === fb.uuid}
+            canUploadDocuments={canAddDocuments(fb)}
+            isUploadingDocuments={uploadingDocumentsFeedbackUuid === fb.uuid}
             onEditStart={() => onStartEditFeedback(fb)}
             onEditCancel={onCancelEditFeedback}
             onEditSave={onSaveEditFeedback}
@@ -239,7 +253,12 @@ export default function StudentView({
             onImageUpload={(files) => onImageUpload(fb.uuid, files)}
             onStartImageUpload={() => onStartImageUpload(fb.uuid)}
             onCancelImageUpload={onCancelImageUpload}
+            onDocumentDelete={onDeleteDocument}
+            onDocumentUpload={(files) => onDocumentUpload(fb.uuid, files)}
+            onStartDocumentUpload={() => onStartDocumentUpload(fb.uuid)}
+            onCancelDocumentUpload={onCancelDocumentUpload}
             getImageUrl={getImageUrl}
+            getDocumentUrl={getDocumentUrl}
             formatDate={formatDate}
           />
         )}

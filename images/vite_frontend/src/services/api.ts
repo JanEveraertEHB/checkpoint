@@ -42,6 +42,9 @@ export const updateProfile = (data: { first_name?: string; last_name?: string; e
 export const changePassword = (current_password: string, new_password: string) =>
   api.put('/users/password', { current_password, new_password })
 
+export const deleteAccount = () =>
+  api.delete('/users/account')
+
 // Classroom APIs
 export const getClassrooms = () =>
   api.get<Classroom[]>('/classrooms')
@@ -98,6 +101,19 @@ export const uploadFeedbackImages = (feedback_uuid: string, files: FileList) => 
 
 export const deleteFeedbackImage = (image_uuid: string) =>
   api.delete(`/feedback/images/${image_uuid}`)
+
+export const uploadFeedbackDocuments = (feedback_uuid: string, files: FileList) => {
+  const formData = new FormData()
+  Array.from(files).forEach(file => {
+    formData.append('documents', file)
+  })
+  return api.post(`/feedback/${feedback_uuid}/documents`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+export const deleteFeedbackDocument = (document_uuid: string) =>
+  api.delete(`/feedback/documents/${document_uuid}`)
 
 // Checkpoint APIs
 export const getCheckpoints = (classroom_uuid: string) =>

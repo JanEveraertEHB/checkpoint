@@ -21,8 +21,13 @@ export default function Register() {
     try {
       await register(firstName, lastName, email, password)
       navigate('/home')
-    } catch (err) {
-      setError('Registration failed. Please try again.')
+    } catch (err: any) {
+      // Check if the error response contains a message about duplicate email
+      if (err.response?.data?.message === 'Email already in use') {
+        setError('This email address is already registered. Please use a different email or try logging in.')
+      } else {
+        setError('Registration failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

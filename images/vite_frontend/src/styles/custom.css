@@ -42,3 +42,22 @@ h1, h2, h3 {
 .ql-editor{
     min-height:300px;
 }
+.fullWidthContainer {
+	display: flex;
+	width: 100vw;
+	flex-direction: row;
+}
+.rightContainer {
+	display: block;
+	width: 60vw;
+	padding: 50px;
+	box-sizing: border-box;
+}
+
+.leftContainer {
+	display: block;
+	width: 40vw;
+	left: 0vw;
+	padding: 50px;
+	box-sizing: border-box;
+}

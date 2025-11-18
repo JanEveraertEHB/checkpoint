@@ -4,7 +4,7 @@ import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
 import { StudentList, InviteCodeDisplay } from '../classroom'
-import { formatDate, getImageUrl, stripHtmlTags } from '../../utils'
+import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, typography } from '../../styles/theme'
 import type { Classroom, Student, Feedback, Checkpoint } from '../../types'
 
@@ -19,6 +19,7 @@ interface TeacherViewProps {
   editingFeedbackUuid: string | null
   editFeedbackContent: string
   uploadingImagesFeedbackUuid: string | null
+  uploadingDocumentsFeedbackUuid: string | null
   error: string
   canReorderCheckpoints: boolean
   onFetchInviteCode: () => void
@@ -40,8 +41,13 @@ interface TeacherViewProps {
   onDeleteImage: (uuid: string) => void
   onStartImageUpload: (feedbackUuid: string) => void
   onCancelImageUpload: () => void
+  onDocumentUpload: (feedbackUuid: string, files: FileList | null) => void
+  onDeleteDocument: (uuid: string) => void
+  onStartDocumentUpload: (feedbackUuid: string) => void
+  onCancelDocumentUpload: () => void
   canEditFeedback: (fb: Feedback) => boolean
   canAddImages: (fb: Feedback) => boolean
+  canAddDocuments: (fb: Feedback) => boolean
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onCompleteClassroom: () => void
   onDemandFeedback: (studentUuid: string) => void
@@ -58,6 +64,7 @@ export default function TeacherView({
   editingFeedbackUuid,
   editFeedbackContent,
   uploadingImagesFeedbackUuid,
+  uploadingDocumentsFeedbackUuid,
   error,
   canReorderCheckpoints,
   onFetchInviteCode,
@@ -79,8 +86,13 @@ export default function TeacherView({
   onDeleteImage,
   onStartImageUpload,
   onCancelImageUpload,
+  onDocumentUpload,
+  onDeleteDocument,
+  onStartDocumentUpload,
+  onCancelDocumentUpload,
   canEditFeedback,
   canAddImages,
+  canAddDocuments,
   timelineItems,
   onCompleteClassroom,
   onDemandFeedback
@@ -183,6 +195,8 @@ export default function TeacherView({
                   canLock={true}
                   canUploadImages={canAddImages(fb)}
                   isUploadingImages={uploadingImagesFeedbackUuid === fb.uuid}
+                  canUploadDocuments={canAddDocuments(fb)}
+                  isUploadingDocuments={uploadingDocumentsFeedbackUuid === fb.uuid}
                   onEditStart={() => onStartEditFeedback(fb)}
                   onEditCancel={onCancelEditFeedback}
                   onEditSave={onSaveEditFeedback}
@@ -192,7 +206,12 @@ export default function TeacherView({
                   onImageUpload={(files) => onImageUpload(fb.uuid, files)}
                   onStartImageUpload={() => onStartImageUpload(fb.uuid)}
                   onCancelImageUpload={onCancelImageUpload}
+                  onDocumentDelete={onDeleteDocument}
+                  onDocumentUpload={(files) => onDocumentUpload(fb.uuid, files)}
+                  onStartDocumentUpload={() => onStartDocumentUpload(fb.uuid)}
+                  onCancelDocumentUpload={onCancelDocumentUpload}
                   getImageUrl={getImageUrl}
+                  getDocumentUrl={getDocumentUrl}
                   formatDate={formatDate}
                 />
               )}

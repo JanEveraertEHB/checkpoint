@@ -14,7 +14,7 @@ interface TabsProps {
 
 export default function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
   return (
-    <div>
+    <div class="rightContainer">
       <div style={{
         borderBottom: '2px solid #e1e4e8',
         marginBottom: '20px'

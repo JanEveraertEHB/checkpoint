@@ -1,1 +1,1 @@
-export { formatDate, getImageUrl, stripHtmlTags } from './formatters'
+export { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from './formatters'

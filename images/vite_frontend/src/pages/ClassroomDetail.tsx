@@ -46,9 +46,11 @@ export default function ClassroomDetail() {
     editingFeedbackUuid,
     editFeedbackContent,
     uploadingImagesFeedbackUuid,
+    uploadingDocumentsFeedbackUuid,
     error: feedbackError,
     setEditFeedbackContent,
     setUploadingImagesFeedbackUuid,
+    setUploadingDocumentsFeedbackUuid,
     fetchMyFeedback,
     fetchStudentFeedback,
     addFeedback,
@@ -56,10 +58,13 @@ export default function ClassroomDetail() {
     toggleFeedbackLock,
     uploadImages,
     deleteImage,
+    uploadDocuments,
+    deleteDocument,
     startEditFeedback,
     cancelEditFeedback,
     canEditFeedback,
-    canAddImagesToFeedback
+    canAddImagesToFeedback,
+    canAddDocumentsToFeedback
   } = useFeedback(uuid)
 
   const timelineItems = useTimeline(feedback, studentProgress)
@@ -171,6 +176,28 @@ export default function ClassroomDetail() {
     }
   }
 
+  // Handle document upload
+  const handleDocumentUpload = async (feedbackUuid: string, files: FileList | null) => {
+    if (!files || files.length === 0) return
+    await uploadDocuments(feedbackUuid, files)
+    if (classroom?.role === 'teacher' && selectedStudent) {
+      fetchStudentFeedback(selectedStudent.uuid)
+    } else {
+      fetchMyFeedback()
+    }
+  }
+
+  // Handle document deletion
+  const handleDeleteDocument = async (documentUuid: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return
+    await deleteDocument(documentUuid)
+    if (classroom?.role === 'teacher' && selectedStudent) {
+      fetchStudentFeedback(selectedStudent.uuid)
+    } else {
+      fetchMyFeedback()
+    }
+  }
+
   // Handle removing student from classroom (teacher only)
   const handleRemoveStudent = async (student: Student) => {
     if (!confirm(`Are you sure you want to remove ${student.first_name} ${student.last_name} from this classroom?`)) {
@@ -273,84 +300,101 @@ export default function ClassroomDetail() {
   }
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="twelve columns">
-          <ClassroomHeader
-            classroom={classroom}
-            onDemandFeedbackFromAll={classroom.role === 'teacher' ? handleDemandFeedbackFromAll : undefined}
-            onRequestFeedback={classroom.role === 'student' ? handleRequestFeedback : undefined}
-          />
-
-          {classroom.role === 'teacher' ? (
-            <TeacherView
-              classroom={classroom}
-              checkpoints={checkpoints}
-              studentProgress={studentProgress}
-              selectedStudent={selectedStudent}
-              inviteCode={inviteCode}
-              showInviteCode={showInviteCode}
-              newFeedback={newFeedback}
-              editingFeedbackUuid={editingFeedbackUuid}
-              editFeedbackContent={editFeedbackContent}
-              uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
-              error={error}
-              canReorderCheckpoints={!hasProgress}
-              onFetchInviteCode={fetchInviteCode}
-              onSelectStudent={handleSelectStudent}
-              onRemoveStudent={handleRemoveStudent}
-              onAddCheckpoint={addCheckpoint}
-              onDeleteCheckpoint={handleDeleteCheckpoint}
-              onEditCheckpoint={handleEditCheckpoint}
-              onReorderCheckpoint={handleReorderCheckpoint}
-              onToggleCheckpoint={handleToggleCheckpoint}
-              onNewFeedbackChange={setNewFeedback}
-              onAddFeedback={handleAddFeedback}
-              onStartEditFeedback={startEditFeedback}
-              onCancelEditFeedback={cancelEditFeedback}
-              onSaveEditFeedback={handleSaveEditFeedback}
-              onEditContentChange={setEditFeedbackContent}
-              onToggleLockFeedback={handleToggleLockFeedback}
-              onImageUpload={handleImageUpload}
-              onDeleteImage={handleDeleteImage}
-              onStartImageUpload={setUploadingImagesFeedbackUuid}
-              onCancelImageUpload={() => setUploadingImagesFeedbackUuid(null)}
-              canEditFeedback={(fb) => canEditFeedback(fb, user, classroom)}
-              canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
-              timelineItems={timelineItems}
-              onCompleteClassroom={handleCompleteClassroom}
-              onDemandFeedback={handleDemandFeedback}
-            />
-          ) : (
-            <StudentView
-              studentProgress={studentProgress}
-              nextCheckpoint={nextCheckpoint}
-              newFeedback={newFeedback}
-              editingFeedbackUuid={editingFeedbackUuid}
-              editFeedbackContent={editFeedbackContent}
-              uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
-              error={error}
-              isCompleted={classroom.completed === true}
-              isActive={classroom.active !== false}
-              onNewFeedbackChange={setNewFeedback}
-              onAddFeedback={handleAddFeedback}
-              onStartEditFeedback={startEditFeedback}
-              onCancelEditFeedback={cancelEditFeedback}
-              onSaveEditFeedback={handleSaveEditFeedback}
-              onEditContentChange={setEditFeedbackContent}
-              onImageUpload={handleImageUpload}
-              onDeleteImage={handleDeleteImage}
-              onStartImageUpload={setUploadingImagesFeedbackUuid}
-              onCancelImageUpload={() => setUploadingImagesFeedbackUuid(null)}
-              canEditFeedback={(fb) => canEditFeedback(fb, user, classroom)}
-              canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
-              timelineItems={timelineItems}
-              onLeaveClassroom={handleLeaveClassroom}
-              onRejoinClassroom={handleRejoinClassroom}
-            />
-          )}
+    <div className="fullWidthContainer">
+      <div className="leftContainer">
+        <div className="container">
+          <div className="row">
+            <div className="twelve columns">
+              <ClassroomHeader
+                classroom={classroom}
+                onDemandFeedbackFromAll={classroom.role === 'teacher' ? handleDemandFeedbackFromAll : undefined}
+                onRequestFeedback={classroom.role === 'student' ? handleRequestFeedback : undefined}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </div> 
+      <div className="rightContainer">
+        {classroom.role === 'teacher' ? (
+          <TeacherView
+            classroom={classroom}
+            checkpoints={checkpoints}
+            studentProgress={studentProgress}
+            selectedStudent={selectedStudent}
+            inviteCode={inviteCode}
+            showInviteCode={showInviteCode}
+            newFeedback={newFeedback}
+            editingFeedbackUuid={editingFeedbackUuid}
+            editFeedbackContent={editFeedbackContent}
+            uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
+            uploadingDocumentsFeedbackUuid={uploadingDocumentsFeedbackUuid}
+            error={error}
+            canReorderCheckpoints={!hasProgress}
+            onFetchInviteCode={fetchInviteCode}
+            onSelectStudent={handleSelectStudent}
+            onRemoveStudent={handleRemoveStudent}
+            onAddCheckpoint={addCheckpoint}
+            onDeleteCheckpoint={handleDeleteCheckpoint}
+            onEditCheckpoint={handleEditCheckpoint}
+            onReorderCheckpoint={handleReorderCheckpoint}
+            onToggleCheckpoint={handleToggleCheckpoint}
+            onNewFeedbackChange={setNewFeedback}
+            onAddFeedback={handleAddFeedback}
+            onStartEditFeedback={startEditFeedback}
+            onCancelEditFeedback={cancelEditFeedback}
+            onSaveEditFeedback={handleSaveEditFeedback}
+            onEditContentChange={setEditFeedbackContent}
+            onToggleLockFeedback={handleToggleLockFeedback}
+            onImageUpload={handleImageUpload}
+            onDeleteImage={handleDeleteImage}
+            onStartImageUpload={setUploadingImagesFeedbackUuid}
+            onCancelImageUpload={() => setUploadingImagesFeedbackUuid(null)}
+            onDocumentUpload={handleDocumentUpload}
+            onDeleteDocument={handleDeleteDocument}
+            onStartDocumentUpload={setUploadingDocumentsFeedbackUuid}
+            onCancelDocumentUpload={() => setUploadingDocumentsFeedbackUuid(null)}
+            canEditFeedback={(fb) => canEditFeedback(fb, user, classroom)}
+            canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
+            canAddDocuments={(fb) => canAddDocumentsToFeedback(fb, user, classroom)}
+            timelineItems={timelineItems}
+            onCompleteClassroom={handleCompleteClassroom}
+            onDemandFeedback={handleDemandFeedback}
+          />
+        ) : (
+          <StudentView
+            studentProgress={studentProgress}
+            nextCheckpoint={nextCheckpoint}
+            newFeedback={newFeedback}
+            editingFeedbackUuid={editingFeedbackUuid}
+            editFeedbackContent={editFeedbackContent}
+            uploadingImagesFeedbackUuid={uploadingImagesFeedbackUuid}
+            uploadingDocumentsFeedbackUuid={uploadingDocumentsFeedbackUuid}
+            error={error}
+            isCompleted={classroom.completed === true}
+            isActive={classroom.active !== false}
+            onNewFeedbackChange={setNewFeedback}
+            onAddFeedback={handleAddFeedback}
+            onStartEditFeedback={startEditFeedback}
+            onCancelEditFeedback={cancelEditFeedback}
+            onSaveEditFeedback={handleSaveEditFeedback}
+            onEditContentChange={setEditFeedbackContent}
+            onImageUpload={handleImageUpload}
+            onDeleteImage={handleDeleteImage}
+            onStartImageUpload={setUploadingImagesFeedbackUuid}
+            onCancelImageUpload={() => setUploadingImagesFeedbackUuid(null)}
+            onDocumentUpload={handleDocumentUpload}
+            onDeleteDocument={handleDeleteDocument}
+            onStartDocumentUpload={setUploadingDocumentsFeedbackUuid}
+            onCancelDocumentUpload={() => setUploadingDocumentsFeedbackUuid(null)}
+            canEditFeedback={(fb) => canEditFeedback(fb, user, classroom)}
+            canAddImages={(fb) => canAddImagesToFeedback(fb, user, classroom)}
+            canAddDocuments={(fb) => canAddDocumentsToFeedback(fb, user, classroom)}
+            timelineItems={timelineItems}
+            onLeaveClassroom={handleLeaveClassroom}
+            onRejoinClassroom={handleRejoinClassroom}
+          />
+        )}
     </div>
+  </div>
   )
 }

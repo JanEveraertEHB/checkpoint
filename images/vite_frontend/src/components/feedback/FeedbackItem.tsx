@@ -2,6 +2,8 @@ import DOMPurify from 'dompurify'
 import { Button, RichTextEditor } from '../common'
 import FeedbackImages from './FeedbackImages'
 import ImageUploader from './ImageUploader'
+import FeedbackDocuments from './FeedbackDocuments'
+import DocumentUploader from './DocumentUploader'
 import type { Feedback } from '../../types'
 
 interface FeedbackItemProps {
@@ -12,6 +14,8 @@ interface FeedbackItemProps {
   canLock: boolean
   canUploadImages: boolean
   isUploadingImages: boolean
+  canUploadDocuments: boolean
+  isUploadingDocuments: boolean
   onEditStart: () => void
   onEditCancel: () => void
   onEditSave: () => void
@@ -21,7 +25,12 @@ interface FeedbackItemProps {
   onImageUpload: (files: FileList | null) => void
   onStartImageUpload: () => void
   onCancelImageUpload: () => void
+  onDocumentDelete: (uuid: string) => void
+  onDocumentUpload: (files: FileList | null) => void
+  onStartDocumentUpload: () => void
+  onCancelDocumentUpload: () => void
   getImageUrl: (filename: string) => string
+  getDocumentUrl: (filename: string) => string
   formatDate: (date: string) => string
 }
 
@@ -33,6 +42,8 @@ export default function FeedbackItem({
   canLock,
   canUploadImages,
   isUploadingImages,
+  canUploadDocuments,
+  isUploadingDocuments,
   onEditStart,
   onEditCancel,
   onEditSave,
@@ -42,7 +53,12 @@ export default function FeedbackItem({
   onImageUpload,
   onStartImageUpload,
   onCancelImageUpload,
+  onDocumentDelete,
+  onDocumentUpload,
+  onStartDocumentUpload,
+  onCancelDocumentUpload,
   getImageUrl,
+  getDocumentUrl,
   formatDate
 }: FeedbackItemProps) {
   if (isEditing) {
@@ -68,6 +84,12 @@ export default function FeedbackItem({
         canDelete={canUploadImages}
         onDelete={onImageDelete}
         getImageUrl={getImageUrl}
+      />
+      <FeedbackDocuments
+        documents={feedback.documents || []}
+        canDelete={canUploadDocuments}
+        onDelete={onDocumentDelete}
+        getDocumentUrl={getDocumentUrl}
       />
       <small style={{ color: '#666' }}>
         By {feedback.created_by_first_name} {feedback.created_by_last_name} on {formatDate(feedback.created_at)}
@@ -95,6 +117,14 @@ export default function FeedbackItem({
           onUpload={onImageUpload}
           onCancel={onCancelImageUpload}
           onStartUpload={onStartImageUpload}
+        />
+      )}
+      {canUploadDocuments && (
+        <DocumentUploader
+          isUploading={isUploadingDocuments}
+          onUpload={onDocumentUpload}
+          onCancel={onCancelDocumentUpload}
+          onStartUpload={onStartDocumentUpload}
         />
       )}
     </>
