@@ -1,0 +1,323 @@
+const { v4: uuidv4 } = require('uuid');
+
+/**
+ * ClassroomService - Business logic layer for classroom-related operations
+ * Handles classroom creation, management, invitations, and memberships
+ * @class
+ */
+class ClassroomService {
+  /**
+   * Creates an instance of ClassroomService
+   * @param {Object} classroomRepository - ClassroomRepository instance
+   * @param {Object} authorizationService - AuthorizationService instance
+   */
+  constructor(classroomRepository, authorizationService) {
+    this.classroomRepository = classroomRepository;
+    this.authorizationService = authorizationService;
+  }
+
+  /**
+   * Generate a unique invite code
+   * @private
+   * @returns {Promise<string>} Unique invite code
+   */
+  async generateUniqueInviteCode() {
+    let inviteCode;
+    let exists = true;
+
+    while (exists) {
+      inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      exists = await this.classroomRepository.inviteCodeExists(inviteCode);
+    }
+
+    return inviteCode;
+  }
+
+  /**
+   * Get all classrooms for a user
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<Array<Object>>} Array of classroom objects with membership info
+   * @throws {Error} Database query error
+   */
+  async getUserClassrooms(userUuid) {
+    return await this.classroomRepository.findByUserMembership(userUuid);
+  }
+
+  /**
+   * Get classroom details by UUID
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Object>} Classroom object with membership info
+   * @throws {Error} Authorization or not found error
+   */
+  async getClassroom(classroomUuid, userUuid) {
+    // Check if user is a member
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    const classroom = await this.classroomRepository.findByUuid(classroomUuid);
+
+    if (!classroom) {
+      const error = new Error('Classroom not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Get user's membership details
+    const membership = await this.classroomRepository.getMembership(classroomUuid, userUuid);
+
+    return {
+      ...classroom,
+      userRole: membership.role,
+      userActive: membership.active
+    };
+  }
+
+  /**
+   * Create a new classroom
+   * @param {Object} classroomData - Classroom data
+   * @param {string} classroomData.name - Classroom name
+   * @param {string} classroomData.description - Classroom description
+   * @param {string} creatorUuid - Creator's UUID
+   * @returns {Promise<Object>} Created classroom object
+   * @throws {Error} Creation error
+   */
+  async createClassroom(classroomData, creatorUuid) {
+    const { name, description } = classroomData;
+
+    // Generate unique invite code
+    const inviteCode = await this.generateUniqueInviteCode();
+
+    // Create classroom
+    const classroom = await this.classroomRepository.create({
+      uuid: uuidv4(),
+      name,
+      description,
+      invite_code: inviteCode,
+      created_by_uuid: creatorUuid
+    });
+
+    // Add creator as teacher
+    await this.classroomRepository.addMember({
+      uuid: uuidv4(),
+      classroom_uuid: classroom.uuid,
+      user_uuid: creatorUuid,
+      role: 'teacher',
+      active: true
+    });
+
+    return classroom;
+  }
+
+  /**
+   * Join a classroom using invite code
+   * @param {string} inviteCode - Invite code
+   * @param {string} userUuid - User's UUID
+   * @param {string} userRole - User's role
+   * @returns {Promise<Object>} Classroom object
+   * @throws {Error} Join error
+   */
+  async joinClassroom(inviteCode, userUuid, userRole) {
+    // Find classroom by invite code
+    const classroom = await this.classroomRepository.findByInviteCode(inviteCode);
+
+    if (!classroom) {
+      const error = new Error('Invalid invite code');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if classroom is completed
+    if (classroom.completed_at) {
+      const error = new Error('This classroom has been completed');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Check if user is already a member
+    const existingMembership = await this.classroomRepository.getMembership(classroom.uuid, userUuid);
+
+    if (existingMembership) {
+      // If inactive, reactivate
+      if (!existingMembership.active) {
+        await this.classroomRepository.updateMembershipStatus(existingMembership.uuid, true);
+        return classroom;
+      }
+
+      const error = new Error('You are already a member of this classroom');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Add user as member
+    await this.classroomRepository.addMember({
+      uuid: uuidv4(),
+      classroom_uuid: classroom.uuid,
+      user_uuid: userUuid,
+      role: userRole,
+      active: true
+    });
+
+    return classroom;
+  }
+
+  /**
+   * Get classroom invite code (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<string>} Invite code
+   * @throws {Error} Authorization error
+   */
+  async getInviteCode(classroomUuid, userUuid) {
+    // Only teachers can get invite code
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    const classroom = await this.classroomRepository.findByUuid(classroomUuid);
+
+    if (!classroom) {
+      const error = new Error('Classroom not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return classroom.invite_code;
+  }
+
+  /**
+   * Remove a student from classroom (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} studentUuid - Student's UUID to remove
+   * @param {string} teacherUuid - Teacher's UUID
+   * @returns {Promise<void>}
+   * @throws {Error} Authorization error
+   */
+  async removeStudent(classroomUuid, studentUuid, teacherUuid) {
+    // Only teachers can remove students
+    await this.authorizationService.requireTeacher(classroomUuid, teacherUuid);
+
+    // Verify the user being removed is a student
+    const isStudent = await this.authorizationService.isStudent(classroomUuid, studentUuid);
+
+    if (!isStudent) {
+      const error = new Error('User is not a student in this classroom');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await this.classroomRepository.removeMember(classroomUuid, studentUuid);
+  }
+
+  /**
+   * Leave a classroom (student only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<void>}
+   * @throws {Error} Authorization error
+   */
+  async leaveClassroom(classroomUuid, userUuid) {
+    // Only students can leave
+    await this.authorizationService.requireStudent(classroomUuid, userUuid, 'Only students can leave a classroom');
+
+    const membership = await this.classroomRepository.getMembership(classroomUuid, userUuid);
+
+    if (!membership) {
+      const error = new Error('You are not a member of this classroom');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Deactivate membership instead of deleting
+    await this.classroomRepository.updateMembershipStatus(membership.uuid, false);
+  }
+
+  /**
+   * Rejoin a classroom (reactivate membership)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<void>}
+   * @throws {Error} Rejoin error
+   */
+  async rejoinClassroom(classroomUuid, userUuid) {
+    const membership = await this.classroomRepository.getMembership(classroomUuid, userUuid);
+
+    if (!membership) {
+      const error = new Error('You were never a member of this classroom');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (membership.active) {
+      const error = new Error('You are already an active member');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await this.classroomRepository.updateMembershipStatus(membership.uuid, true);
+  }
+
+  /**
+   * Mark classroom as completed (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<Object>} Updated classroom object
+   * @throws {Error} Authorization error
+   */
+  async completeClassroom(classroomUuid, userUuid) {
+    // Only teachers can complete classrooms
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    const classroom = await this.classroomRepository.findByUuid(classroomUuid);
+
+    if (!classroom) {
+      const error = new Error('Classroom not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (classroom.completed_at) {
+      const error = new Error('Classroom is already completed');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return await this.classroomRepository.markAsCompleted(classroomUuid);
+  }
+
+  /**
+   * Get all members of a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Array<Object>>} Array of member objects
+   * @throws {Error} Authorization error
+   */
+  async getClassroomMembers(classroomUuid, userUuid) {
+    // User must be a member to see other members
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getMembers(classroomUuid);
+  }
+
+  /**
+   * Get all active students in a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Array<Object>>} Array of student objects
+   * @throws {Error} Authorization error
+   */
+  async getActiveStudents(classroomUuid, userUuid) {
+    // User must be a member
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getActiveStudents(classroomUuid);
+  }
+
+  /**
+   * Check if classroom is completed
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<boolean>} True if classroom is completed
+   */
+  async isCompleted(classroomUuid) {
+    return await this.classroomRepository.isCompleted(classroomUuid);
+  }
+}
+
+module.exports = ClassroomService;

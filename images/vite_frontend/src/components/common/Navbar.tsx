@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { getFeedbackRequestCount, getFeedbackDemandCount } from '../../services/api'
+import icon from "./../../assets/icon.svg"
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -40,7 +41,7 @@ export default function Navbar() {
       position: 'sticky',
       top: '0px',
       zIndex: 1000,
-      backgroundColor: '#F5E10E'
+      backgroundColor: '#fbd547'
     }}>
       <div className="container navbar">
         <div style={{
@@ -49,9 +50,10 @@ export default function Navbar() {
           alignItems: 'center'
         }}>
           <div>
-            <Link to="/home" style={{ marginRight: '20px' }}>
-              <span className="logo">C.A</span>
+            <Link to="/" className="subtleLink">
+              <img className="logo" src={icon} />
             </Link>
+
             <Link to="/home">Classrooms</Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>

@@ -17,7 +17,7 @@ export default function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
     <div>
       <div style={{
         borderBottom: '2px solid #e1e4e8',
-        marginBottom: '20px'
+        marginBottom: '20px',
       }}>
         <div style={{
           display: 'flex',
@@ -28,6 +28,7 @@ export default function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               style={{
+                marginLeft: tab.label == 'Settings' ? 'auto' : '0px',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
