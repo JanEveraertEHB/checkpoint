@@ -51,14 +51,16 @@ docker compose -f docker-compose.deploy.yml up -d
 ### Images
 
 - `tastbaar/checkpoint-api:latest` - Node.js API backend
-- `tastbaar/checkpoint-frontend:latest` - Nginx serving React frontend
+- `tastbaar/checkpoint-student:latest` - Nginx serving React frontend
+- `tastbaar/checkpoint-teacher:latest` - Nginx serving React frontend
 - `postgres:latest` - PostgreSQL database
 - `containrrr/watchtower:latest` - Automatic update service
 
 ### Containers
 
 - `checkpoint-api` - API service (port 3000)
-- `checkpoint-frontend` - Frontend service (port 80)
+- `checkpoint-student` - Frontend service (port 80)
+- `checkpoint-teacher` - Frontend service (port 80)
 - `checkpoint-db` - Database (port 5432)
 - `checkpoint-watchtower` - Update monitor
 

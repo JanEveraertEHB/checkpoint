@@ -5,6 +5,8 @@ on:
     branches:
       - main
   workflow_dispatch:
+  pull_request:
+    types: [opened, reopened]
 
 jobs:
   build-and-push:
@@ -43,22 +45,42 @@ jobs:
           cache-from: type=registry,ref=tastbaar/checkpoint-api:latest
           cache-to: type=inline
 
-      - name: Extract metadata for Frontend
-        id: meta-frontend
+      - name: Extract metadata for Student
+        id: meta-student
         uses: docker/metadata-action@v5
         with:
-          images: tastbaar/checkpoint-frontend
+          images: tastbaar/checkpoint-student
           tags: |
             type=raw,value=latest
             type=sha,prefix={{branch}}-
 
-      - name: Build and push Frontend image
+      - name: Build and push Student image
         uses: docker/build-push-action@v5
         with:
-          context: ./images/vite_frontend
-          file: ./images/vite_frontend/Dockerfile
+          context: ./images/student
+          file: ./images/student/Dockerfile
           push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=registry,ref=tastbaar/checkpoint-frontend:latest
+          tags: ${{ steps.meta-student.outputs.tags }}
+          labels: ${{ steps.meta-student.outputs.labels }}
+          cache-from: type=registry,ref=tastbaar/checkpoint-student:latest
+          cache-to: type=inline
+
+      - name: Extract metadata for Teacher
+        id: meta-teacher
+        uses: docker/metadata-action@v5
+        with:
+          images: tastbaar/checkpoint-teacher
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Teacher image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./images/teacher
+          file: ./images/teacher/Dockerfile
+          push: true
+          tags: ${{ steps.meta-teacher.outputs.tags }}
+          labels: ${{ steps.meta-teacher.outputs.labels }}
+          cache-from: type=registry,ref=tastbaar/checkpoint-teacher:latest
           cache-to: type=inline

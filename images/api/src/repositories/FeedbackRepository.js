@@ -121,7 +121,7 @@ class FeedbackRepository {
   async getImages(feedbackUuid) {
     return await this.db('feedback_images')
       .where({ feedback_uuid: feedbackUuid })
-      .orderBy('uploaded_at', 'asc');
+      .orderBy('created_at', 'asc');
   }
 
   /**
@@ -177,7 +177,7 @@ class FeedbackRepository {
   async getDocuments(feedbackUuid) {
     return await this.db('feedback_documents')
       .where({ feedback_uuid: feedbackUuid })
-      .orderBy('uploaded_at', 'asc');
+      .orderBy('created_at', 'asc');
   }
 
   /**
