@@ -41,7 +41,7 @@ export default function Navbar() {
       position: 'sticky',
       top: '0px',
       zIndex: 1000,
-      backgroundColor: '#fbd547'
+      backgroundColor: '#ffe700'
     }}>
       <div className="container navbar">
         <div style={{

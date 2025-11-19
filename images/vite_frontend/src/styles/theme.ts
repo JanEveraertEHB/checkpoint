@@ -2,7 +2,7 @@
 
 export const colors = {
   // Primary colors
-  primary: '#33C3F0',
+  primary: '#ffe700',
   primaryDark: '#0FA0CE',
 
   // Status colors

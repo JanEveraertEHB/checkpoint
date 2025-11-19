@@ -17,7 +17,7 @@ body {
 /* Link styling to match docs/style */
 a {
   text-decoration: none;
-  background-color: #fbd547;
+  background-color: #ffe700;
   padding: 2px 5px;
 }
 
@@ -66,9 +66,11 @@ th {
 }
 
 .footer a {
-  background-color:  #fff;
-  color: #aaa;
-
+  background-color:  unset;
+  color: rgba(0, 0, 0, 0.3);
+}
+h6 {
+  font-weight: bold;
 }
 
 
