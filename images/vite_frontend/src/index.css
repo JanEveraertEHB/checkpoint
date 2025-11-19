@@ -64,7 +64,9 @@ th, td {
 th {
   font-weight: 600;
 }
-
+.footer {
+  padding-top: 50px;
+}
 .footer a {
   background-color:  unset;
   color: rgba(0, 0, 0, 0.3);
