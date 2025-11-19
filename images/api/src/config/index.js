@@ -82,9 +82,6 @@ function validateConfig() {
     if (!process.env.JWT_SECRET) {
       required.push('JWT_SECRET');
     }
-    if (!process.env.DATABASE_URL) {
-      required.push('DATABASE_URL');
-    }
     if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
       required.push('SMTP_USER and SMTP_PASSWORD');
     }
