@@ -42,7 +42,6 @@ interface FeedbackDemand {
 }
 
 export default function Notifications() {
-  const { user } = useAuth()
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [selectedClassroom, setSelectedClassroom] = useState<string>('')
   const [requests, setRequests] = useState<FeedbackRequest[]>([])

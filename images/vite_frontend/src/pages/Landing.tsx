@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import icon from './../assets/icon.svg'
+
 export default function Landing() {
   return (
    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#ffe700', marginTop: '-50px', display: 'flex', justifyContent: 'center'}}>
