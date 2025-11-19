@@ -74,6 +74,7 @@ router.post(
  * @body {string} last_name - User's last name
  * @body {string} email - User's email address
  * @body {string} password - User's password (min 6 characters)
+ * @body {string} [user_type='student'] - User type (student or teacher)
  * @returns {Object} Created user object with token
  * @throws {ValidationError} 400 - Missing or invalid fields
  * @throws {ConflictError} 409 - Email already in use
@@ -85,14 +86,24 @@ router.post(
   validatePassword('password', 6),
   sanitizeText(['first_name', 'last_name'], 100),
   asyncHandler(async (req, res) => {
-    const { first_name, last_name, email, password } = req.body;
+    const { first_name, last_name, email, password, user_type } = req.body;
+
+    // Validate user_type if provided
+    if (user_type && !['student', 'teacher'].includes(user_type)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'user_type must be either "student" or "teacher"'
+      });
+    }
+
     const userService = container.get('userService');
 
     const { user, token } = await userService.register({
       first_name,
       last_name,
       email,
-      password
+      password,
+      user_type
     });
 
     res.status(HTTP_STATUS.CREATED).json({

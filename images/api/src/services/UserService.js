@@ -59,7 +59,7 @@ class UserService {
     }
 
     const token = jwt.sign(
-      { uuid: user.uuid, email: user.email, role: user.role },
+      { uuid: user.uuid, email: user.email, user_type: user.user_type },
       this.config.jwtSecret,
       { expiresIn: '7d' }
     );
@@ -80,11 +80,12 @@ class UserService {
    * @param {string} userData.password - User's password (plaintext)
    * @param {string} userData.first_name - User's first name
    * @param {string} userData.last_name - User's last name
+   * @param {string} [userData.user_type='student'] - User type (student or teacher)
    * @returns {Promise<Object>} Object containing created user and token
    * @throws {Error} Registration error
    */
   async register(userData) {
-    const { email, password, first_name, last_name } = userData;
+    const { email, password, first_name, last_name, user_type } = userData;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findByEmail(email);
@@ -104,12 +105,13 @@ class UserService {
       email,
       password: hashedPassword,
       first_name,
-      last_name
+      last_name,
+      user_type: user_type || 'student'
     });
 
     // Generate token
     const token = jwt.sign(
-      { uuid: newUser.uuid, email: newUser.email, first_name: newUser.first_name, last_name: newUser.last_name },
+      { uuid: newUser.uuid, email: newUser.email, first_name: newUser.first_name, last_name: newUser.last_name, user_type: newUser.user_type },
       this.config.jwtSecret,
       { expiresIn: '7d' }
     );
@@ -152,6 +154,7 @@ class UserService {
    * @param {string} [updates.last_name] - Updated last name
    * @param {string} [updates.email] - Updated email
    * @param {string} [updates.date_of_birth] - Updated date of birth
+   * @param {string} [updates.user_type] - Updated user type (student or teacher)
    * @returns {Promise<Object>} Updated user object without password and token
    * @throws {Error} Update error
    */
@@ -177,7 +180,7 @@ class UserService {
 
     // Generate new token with updated info
     const token = jwt.sign(
-      { uuid: updatedUser.uuid, email: updatedUser.email, first_name: updatedUser.first_name, last_name: updatedUser.last_name },
+      { uuid: updatedUser.uuid, email: updatedUser.email, first_name: updatedUser.first_name, last_name: updatedUser.last_name, user_type: updatedUser.user_type },
       this.config.jwtSecret,
       { expiresIn: '7d' }
     );

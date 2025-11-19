@@ -28,8 +28,8 @@ const hashPassword = (password: string): string => {
 export const loginUser = (email: string, password: string) =>
   api.post<User & { token: string }>('/users/login', { email, password: hashPassword(password) })
 
-export const registerUser = (first_name: string, last_name: string, email: string, password: string) =>
-  api.post<User & { token: string }>('/users/register', { first_name, last_name, email, password: hashPassword(password) })
+export const registerUser = (first_name: string, last_name: string, email: string, password: string, user_type: 'student' | 'teacher') =>
+  api.post<User & { token: string }>('/users/register', { first_name, last_name, email, password: hashPassword(password), user_type })
 
 export const validateToken = () =>
   api.get<User>('/users/validate_token')

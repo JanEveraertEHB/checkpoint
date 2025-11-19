@@ -35,15 +35,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await loginUser(email, password)
     const { token, ...userData } = response.data
     localStorage.setItem('token', token)
-    setUser(userData)
+    setUser(userData as User)
+    return userData as User
   }
 
-  const register = async (first_name: string, last_name: string, email: string, password: string) => {
-    const response = await registerUser(first_name, last_name, email, password)
+  const register = async (first_name: string, last_name: string, email: string, password: string, user_type: 'student' | 'teacher') => {
+    const response = await registerUser(first_name, last_name, email, password, user_type)
     const { token, ...userData } = response.data
     localStorage.setItem('token', token)
     setUser(userData)

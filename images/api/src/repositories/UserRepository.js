@@ -46,6 +46,7 @@ class UserRepository {
    * @param {string} userData.password - Hashed password
    * @param {string} userData.first_name - User's first name
    * @param {string} userData.last_name - User's last name
+   * @param {string} [userData.user_type='student'] - User type (student or teacher)
    * @returns {Promise<Object>} Created user object
    * @throws {Error} Database insertion error
    */
@@ -65,6 +66,7 @@ class UserRepository {
    * @param {string} [updates.last_name] - Updated last name
    * @param {string} [updates.email] - Updated email
    * @param {string} [updates.date_of_birth] - Updated date of birth
+   * @param {string} [updates.user_type] - Updated user type (student or teacher)
    * @returns {Promise<Object>} Updated user object
    * @throws {Error} Database update error
    */

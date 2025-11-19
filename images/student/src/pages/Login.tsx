@@ -17,8 +17,20 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
-      navigate('/home')
+      const userData = await login(email, password)
+
+      // Check user_type and redirect accordingly
+      if (userData.user_type === 'teacher') {
+        // Redirect to teacher domain
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        if (isLocalhost) {
+          window.location.href = 'http://localhost:5173/home'
+        } else {
+          window.location.href = 'https://teacher.checkpoint.academy/home'
+        }
+      } else {
+        navigate('/home')
+      }
     } catch (err) {
       setError('Invalid email or password')
     } finally {
