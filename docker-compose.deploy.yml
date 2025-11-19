@@ -26,10 +26,9 @@ services:
       - backend
     restart: unless-stopped
 
-  # Frontend (Vite app served by nginx)
-  frontend:
-    image: tastbaar/checkpoint-frontend:latest
-    container_name: frontend
+  student:
+    image: tastbaar/checkpoint-student:latest
+    container_name: student
     depends_on:
       - api
     networks:
@@ -38,14 +37,36 @@ services:
     labels:
       - "traefik.enable=true"
       # HTTP router (for initial setup and ACME challenge)
-      - "traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.service=frontend"
+      - "traefik.http.routers.student-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.student-http.entrypoints=web"
+      - "traefik.http.routers.student-http.service=student"
       # HTTPS router
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.student.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.student.entrypoints=websecure"
+      - "traefik.http.routers.student.tls.certresolver=letsencrypt"
+      - "traefik.http.services.student.loadbalancer.server.port=80"
+      # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  teacher:
+    image: tastbaar/checkpoint-teacher:latest
+    container_name: teacher
+    depends_on:
+      - api
+    networks:
+      - backend
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # HTTP router (for initial setup and ACME challenge)
+      - "traefik.http.routers.teacher-http.rule=Host(`teacher.${DOMAIN}`)"
+      - "traefik.http.routers.teacher-http.entrypoints=web"
+      - "traefik.http.routers.teacher-http.service=teacher"
+      # HTTPS router
+      - "traefik.http.routers.teacher.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.teacher.entrypoints=websecure"
+      - "traefik.http.routers.teacher.tls.certresolver=letsencrypt"
+      - "traefik.http.services.teacher.loadbalancer.server.port=80"
       # Watchtower
       - "com.centurylinklabs.watchtower.enable=true"
 

@@ -164,10 +164,11 @@ class CheckpointRepository {
    * @throws {Error} Database query error
    */
   async getStudentProgressByClassroom(classroomUuid, studentUuid) {
+    const insert = this.db.raw('?', [studentUuid]);
     return await this.db('checkpoints')
       .leftJoin('student_checkpoints', function() {
         this.on('checkpoints.uuid', '=', 'student_checkpoints.checkpoint_uuid')
-          .andOn('student_checkpoints.student_uuid', '=', this.db.raw('?', [studentUuid]));
+          .andOn('student_checkpoints.student_uuid', '=',insert);
       })
       .where('checkpoints.classroom_uuid', classroomUuid)
       .select(

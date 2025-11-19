@@ -1,0 +1,80 @@
+@import './styles/normalize.css';
+@import './styles/skeleton.css';
+@import './styles/custom.css';
+@import './styles/icons.css';
+
+
+/* Additional app-specific styles */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+#root {
+  width: 100%;
+}
+
+
+/* Link styling to match docs/style */
+a {
+  text-decoration: none;
+  background-color: #ffe700;
+  padding: 2px 5px;
+}
+
+a:hover {
+  background: #000;
+}
+
+/* Button improvements */
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Form improvements */
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #D1D1D1;
+  font-family: inherit;
+}
+
+textarea:focus {
+  border: 1px solid #33C3F0;
+  outline: 0;
+}
+
+/* Table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 5px;
+  text-align: left;
+  border-bottom: 1px solid #E1E1E1;
+}
+
+th {
+  font-weight: 600;
+}
+.footer {
+  padding-top: 50px;
+}
+.footer a {
+  background-color:  unset;
+  color: rgba(0, 0, 0, 0.3);
+}
+h6 {
+  font-weight: bold;
+}
+
+
