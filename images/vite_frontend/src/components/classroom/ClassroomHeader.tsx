@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Button } from '../common'
 import type { Classroom } from '../../types'
 

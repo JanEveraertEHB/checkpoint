@@ -326,11 +326,11 @@ export default function TeacherView({
             </div>
 
             {settingsError && (
-              <Alert variant="error" message={settingsError} />
+              <Alert type="error">{settingsError}</Alert>
             )}
 
             {settingsSuccess && (
-              <Alert variant="success" message="Classroom settings updated successfully!" />
+              <Alert type="success">Classroom settings updated successfully!</Alert>
             )}
 
             <Button
