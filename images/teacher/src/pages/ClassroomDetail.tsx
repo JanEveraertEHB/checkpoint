@@ -332,7 +332,6 @@ export default function ClassroomDetail() {
             onDemandFeedback={handleDemandFeedback}
             onUpdateClassroom={handleUpdateClassroom}
             onRefreshClassroom={refreshClassroom}
-            onRemovePending={handleRemovePending}
           />
       </div>
     </div>

@@ -52,7 +52,6 @@ interface TeacherViewProps {
   onDemandFeedback: (studentUuid: string) => void
   onUpdateClassroom: (updates: { name?: string; academic_year?: string; allowed_email_domain?: string | null }) => Promise<void>
   onRefreshClassroom: () => void
-  onRemovePending: (email: string) => void
 }
 
 export default function TeacherView({
@@ -97,8 +96,7 @@ export default function TeacherView({
   onCompleteClassroom,
   onDemandFeedback,
   onUpdateClassroom,
-  onRefreshClassroom,
-  onRemovePending
+  onRefreshClassroom
 }: TeacherViewProps) {
   const [activeTab, setActiveTab] = useState('feedback')
   const [showAddCheckpoint, setShowAddCheckpoint] = useState(false)

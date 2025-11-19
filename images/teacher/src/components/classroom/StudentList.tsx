@@ -110,7 +110,7 @@ export default function StudentList({
                     float: 'left',
                     margin: '8px',
                     borderRadius: '50%',
-                    backgroundColor: colors.gray,
+                    backgroundColor: colors.gray400,
                     border: `1px dashed ${colors.textMuted}`
                   }}></div>
                   {pending.email}

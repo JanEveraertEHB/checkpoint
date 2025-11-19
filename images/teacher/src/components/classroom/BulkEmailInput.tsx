@@ -69,7 +69,7 @@ export default function BulkEmailInput({ classroomUuid, onSuccess }: BulkEmailIn
           width: '100%',
           padding: spacing.sm,
           borderRadius: '4px',
-          border: `1px solid ${colors.gray}`,
+          border: `1px solid ${colors.gray300}`,
           fontFamily: 'monospace',
           fontSize: '14px'
         }}
@@ -83,7 +83,7 @@ export default function BulkEmailInput({ classroomUuid, onSuccess }: BulkEmailIn
           <div style={{
             maxHeight: '150px',
             overflowY: 'auto',
-            backgroundColor: colors.backgroundLight,
+            backgroundColor: colors.bgLight,
             padding: spacing.sm,
             borderRadius: '4px',
             fontSize: '13px',
@@ -99,7 +99,7 @@ export default function BulkEmailInput({ classroomUuid, onSuccess }: BulkEmailIn
       {error && <p style={{ color: 'red', marginTop: spacing.sm }}>{error}</p>}
 
       {result && (
-        <div style={{ marginTop: spacing.md, padding: spacing.sm, backgroundColor: colors.backgroundLight, borderRadius: '4px' }}>
+        <div style={{ marginTop: spacing.md, padding: spacing.sm, backgroundColor: colors.bgLight, borderRadius: '4px' }}>
           <h5 style={{ marginBottom: spacing.xs }}>Results:</h5>
           {result.added?.length > 0 && (
             <p style={{ color: 'green' }}>
