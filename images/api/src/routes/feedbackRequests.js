@@ -1,189 +1,155 @@
-const express = require('express')
-const router = express.Router()
-const { uuidv4 } = require("./../helpers/uuidHelpers")
-const { decodeToken } = require("./../helpers/authHelpers")
-const pg = require('./../db/db.js')
+const express = require('express');
+const router = express.Router();
+const container = require('../container');
+const { decodeToken } = require('../helpers/authHelpers');
+const { asyncHandler, HTTP_STATUS } = require('../middleware/errorHandler');
+const {
+  validateRequiredFields,
+  validateUUID,
+  sanitizeText
+} = require('../middleware/validation');
 
-// Get all feedback requests for a classroom (teacher only)
-router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid
-    const classroomUuid = req.params.classroom_uuid
+/**
+ * @route GET /feedback-requests/classroom/:classroom_uuid
+ * @description Get all feedback requests for a classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @returns {Array<Object>} Array of feedback request objects
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can view feedback requests
+ */
+router.get(
+  '/classroom/:classroom_uuid',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
+    const classroomUuid = req.params.classroom_uuid;
+    const userUuid = req.user.uuid;
 
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
-      .first()
+    const requests = await feedbackService.getClassroomRequests(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can view feedback requests" })
-    }
+    res.status(HTTP_STATUS.OK).json(requests);
+  })
+);
 
-    const requests = await pg.get()('feedback_requests')
-      .join('users', 'feedback_requests.student_uuid', 'users.uuid')
-      .where({ 'feedback_requests.classroom_uuid': classroomUuid })
-      .select(
-        'feedback_requests.*',
-        'users.first_name as student_first_name',
-        'users.last_name as student_last_name',
-        'users.email as student_email'
-      )
-      .orderBy('feedback_requests.created_at', 'desc')
+/**
+ * @route GET /feedback-requests/count
+ * @description Get unresolved feedback request count for teacher
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @returns {Object} Object with count property
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ */
+router.get(
+  '/count',
+  decodeToken,
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
+    const userUuid = req.user.uuid;
 
-    res.status(200).send(requests)
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ message: "Error fetching feedback requests" })
-  }
-})
+    const count = await feedbackService.getUnresolvedRequestCount(userUuid);
 
-// Get unresolved feedback request count for teacher
-router.get('/count', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid
+    res.status(HTTP_STATUS.OK).json({ count });
+  })
+);
 
-    // Get all classrooms where user is teacher
-    const classrooms = await pg.get()('classroom_members')
-      .where({ user_uuid: userUuid, role: 'teacher' })
-      .select('classroom_uuid')
+/**
+ * @route POST /feedback-requests
+ * @description Create a feedback request (student only)
+ * @access Protected (Student only)
+ * @headers {string} Authorization - Bearer token
+ * @body {string} classroom_uuid - Classroom UUID
+ * @body {string} [message] - Optional request message
+ * @returns {Object} Created feedback request object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Missing or invalid fields
+ * @throws {AuthorizationError} 403 - Only active students can request feedback
+ */
+router.post(
+  '/',
+  decodeToken,
+  validateRequiredFields(['classroom_uuid']),
+  sanitizeText(['message'], 500),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
+    const { classroom_uuid, message } = req.body;
+    const userUuid = req.user.uuid;
 
-    const classroomUuids = classrooms.map(c => c.classroom_uuid)
+    const request = await feedbackService.createFeedbackRequest(
+      {
+        classroom_uuid,
+        message: message || null
+      },
+      userUuid
+    );
 
-    if (classroomUuids.length === 0) {
-      return res.status(200).send({ count: 0 })
-    }
+    res.status(HTTP_STATUS.CREATED).json({
+      ...request,
+      message: 'Feedback request created'
+    });
+  })
+);
 
-    const count = await pg.get()('feedback_requests')
-      .whereIn('classroom_uuid', classroomUuids)
-      .where('resolved', false)
-      .count('* as count')
-      .first()
+/**
+ * @route PUT /feedback-requests/:uuid/resolve
+ * @description Mark feedback request as resolved (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Request UUID
+ * @returns {Object} Updated feedback request object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can resolve feedback requests
+ * @throws {NotFoundError} 404 - Feedback request not found
+ */
+router.put(
+  '/:uuid/resolve',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
+    const requestUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
 
-    res.status(200).send({ count: parseInt(count.count) })
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ message: "Error fetching request count" })
-  }
-})
+    const updated = await feedbackService.resolveFeedbackRequest(requestUuid, userUuid);
 
-// Create a feedback request (student only)
-router.post('/', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid
-    const { classroom_uuid, message } = req.body
+    res.status(HTTP_STATUS.OK).json({
+      ...updated,
+      message: 'Feedback request resolved'
+    });
+  })
+);
 
-    if (!classroom_uuid) {
-      return res.status(400).send({ message: "classroom_uuid required" })
-    }
+/**
+ * @route DELETE /feedback-requests/:uuid
+ * @description Delete a feedback request
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Request UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not authorized to delete this request
+ * @throws {NotFoundError} 404 - Feedback request not found
+ */
+router.delete(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
+    const requestUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
 
-    // Check if user is student in classroom
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid, user_uuid: userUuid, role: 'student', active: true })
-      .first()
+    await feedbackService.deleteFeedbackRequest(requestUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only active students can request feedback" })
-    }
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Feedback request deleted'
+    });
+  })
+);
 
-    // Check if classroom is completed
-    const classroom = await pg.get()('classrooms')
-      .where({ uuid: classroom_uuid })
-      .first()
-
-    if (classroom.completed) {
-      return res.status(403).send({ message: "Cannot request feedback in completed classroom" })
-    }
-
-    const requestData = {
-      uuid: uuidv4(),
-      classroom_uuid,
-      student_uuid: userUuid,
-      message: message || null,
-      resolved: false
-    }
-
-    const [request] = await pg.get()('feedback_requests')
-      .insert(requestData)
-      .returning('*')
-
-    res.status(200).send({ ...request, message: "Feedback request created" })
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ message: "Error creating feedback request" })
-  }
-})
-
-// Mark feedback request as resolved (teacher only)
-router.put('/:uuid/resolve', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid
-    const requestUuid = req.params.uuid
-
-    const request = await pg.get()('feedback_requests')
-      .where({ uuid: requestUuid })
-      .first()
-
-    if (!request) {
-      return res.status(404).send({ message: "Feedback request not found" })
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: request.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first()
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can resolve feedback requests" })
-    }
-
-    const [updated] = await pg.get()('feedback_requests')
-      .where({ uuid: requestUuid })
-      .update({
-        resolved: true,
-        resolved_at: pg.get().fn.now()
-      })
-      .returning('*')
-
-    res.status(200).send({ ...updated, message: "Feedback request resolved" })
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ message: "Error resolving feedback request" })
-  }
-})
-
-// Delete a feedback request
-router.delete('/:uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid
-    const requestUuid = req.params.uuid
-
-    const request = await pg.get()('feedback_requests')
-      .where({ uuid: requestUuid })
-      .first()
-
-    if (!request) {
-      return res.status(404).send({ message: "Feedback request not found" })
-    }
-
-    // Students can delete their own requests, teachers can delete any
-    const isStudent = request.student_uuid === userUuid
-    const isTeacher = await pg.get()('classroom_members')
-      .where({ classroom_uuid: request.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first()
-
-    if (!isStudent && !isTeacher) {
-      return res.status(403).send({ message: "Not authorized to delete this request" })
-    }
-
-    await pg.get()('feedback_requests')
-      .where({ uuid: requestUuid })
-      .delete()
-
-    res.status(200).send({ message: "Feedback request deleted" })
-  } catch (e) {
-    console.log(e)
-    res.status(500).send({ message: "Error deleting feedback request" })
-  }
-})
-
-module.exports = router
+module.exports = router;

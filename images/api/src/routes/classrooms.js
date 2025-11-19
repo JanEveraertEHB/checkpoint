@@ -1,383 +1,308 @@
-const express = require('express')
-const router = express.Router()
-const { checkBodyFields } = require("./../helpers/bodyHelpers");
-const { uuidv4 } = require("./../helpers/uuidHelpers");
-const { decodeToken } = require("./../helpers/authHelpers")
-const pg = require('./../db/db.js')
+const express = require('express');
+const router = express.Router();
+const container = require('../container');
+const { decodeToken } = require('../helpers/authHelpers');
+const { asyncHandler, HTTP_STATUS } = require('../middleware/errorHandler');
+const {
+  validateRequiredFields,
+  validateUUID,
+  sanitizeText
+} = require('../middleware/validation');
 
-const generateInviteCode = () => {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
-}
+/**
+ * @route GET /classrooms
+ * @description Get all classrooms for the current user (both as teacher and student)
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @returns {Array<Object>} Array of classroom objects with membership info
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {InternalServerError} 500 - Database error
+ */
+router.get(
+  '/',
+  decodeToken,
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classrooms = await classroomService.getUserClassrooms(req.user.uuid);
 
-// Get all classrooms for the current user (both as teacher and student)
-router.get('/', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+    res.status(HTTP_STATUS.OK).json(classrooms);
+  })
+);
 
-    const classrooms = await pg.get()('classroom_members')
-      .join('classrooms', 'classroom_members.classroom_uuid', 'classrooms.uuid')
-      .join('users', 'classrooms.teacher_uuid', 'users.uuid')
-      .where('classroom_members.user_uuid', userUuid)
-      .select(
-        'classrooms.*',
-        'classroom_members.role',
-        'users.first_name as teacher_first_name',
-        'users.last_name as teacher_last_name'
-      );
-
-    res.status(200).send(classrooms);
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching classrooms" });
-  }
-});
-
-// Get classroom details by ID
-router.get('/:uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route GET /classrooms/:uuid
+ * @description Get classroom details by UUID
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Classroom object with membership info and students list (if teacher)
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
 
-    // Check if user is a member
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .first();
+    const classroom = await classroomService.getClassroom(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    const classroom = await pg.get()('classrooms')
-      .join('users', 'classrooms.teacher_uuid', 'users.uuid')
-      .where('classrooms.uuid', classroomUuid)
-      .select(
-        'classrooms.*',
-        'users.first_name as teacher_first_name',
-        'users.last_name as teacher_last_name'
-      )
-      .first();
-
-    if (!classroom) {
-      return res.status(404).send({ message: "Classroom not found" });
-    }
-
-    // Get all students if user is teacher (including inactive ones)
+    // If user is a teacher, get all members (students)
     let students = [];
-    if (membership.role === 'teacher') {
-      students = await pg.get()('classroom_members')
-        .join('users', 'classroom_members.user_uuid', 'users.uuid')
-        .where({
-          classroom_uuid: classroomUuid,
-          role: 'student'
-        })
-        .select(
-          'users.uuid',
-          'users.first_name',
-          'users.last_name',
-          'users.email',
-          'classroom_members.active'
-        );
+    if (classroom.userRole === 'teacher') {
+      const members = await classroomService.getClassroomMembers(classroomUuid, userUuid);
+      students = members
+        .filter(member => member.role === 'student')
+        .map(member => ({
+          uuid: member.user_uuid,
+          first_name: member.first_name,
+          last_name: member.last_name,
+          email: member.email,
+          active: member.active
+        }));
     }
 
-    res.status(200).send({
-      ...classroom,
-      role: membership.role,
-      active: membership.active,
+    // Rename userRole and userActive for backward compatibility
+    const { userRole, userActive, ...classroomData } = classroom;
+
+    res.status(HTTP_STATUS.OK).json({
+      ...classroomData,
+      role: userRole,
+      active: userActive,
       students
     });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching classroom" });
-  }
-});
+  })
+);
 
-// Create a new classroom
-router.post('/', decodeToken, async (req, res) => {
-  if (!req.body) {
-    return res.status(401).send({ message: "No body" });
-  }
+/**
+ * @route POST /classrooms
+ * @description Create a new classroom
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @body {string} name - Classroom name
+ * @body {string} academic_year - Academic year for the classroom
+ * @body {string} [allowed_email_domain] - Optional email domain restriction
+ * @returns {Object} Created classroom object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Missing or invalid fields
+ * @throws {InternalServerError} 500 - Database error
+ */
+router.post(
+  '/',
+  decodeToken,
+  validateRequiredFields(['name', 'academic_year']),
+  sanitizeText(['name', 'academic_year', 'allowed_email_domain'], 200),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const { name, academic_year, allowed_email_domain } = req.body;
 
-  if (!checkBodyFields(req.body, ["name", "academic_year"])) {
-    return res.status(402).send({ fields: "no" });
-  }
+    const classroom = await classroomService.createClassroom(
+      {
+        name,
+        academic_year,
+        allowed_email_domain
+      },
+      req.user.uuid
+    );
 
-  try {
-    const classroomData = {
-      uuid: uuidv4(),
-      name: req.body.name,
-      academic_year: req.body.academic_year,
-      teacher_uuid: req.user.uuid,
-      invite_code: generateInviteCode(),
-      allowed_email_domain: req.body.allowed_email_domain || null
-    };
-
-    const [classroom] = await pg.get()('classrooms')
-      .insert(classroomData)
-      .returning('*');
-
-    // Add teacher as a member
-    await pg.get()('classroom_members').insert({
-      classroom_uuid: classroom.uuid,
-      user_uuid: req.user.uuid,
-      role: 'teacher'
+    res.status(HTTP_STATUS.CREATED).json({
+      success: true,
+      ...classroom,
+      message: 'Classroom created successfully'
     });
+  })
+);
 
-    res.status(200).send({ ...classroom, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(501).send({ message: "Error creating classroom" });
-  }
-});
-
-// Join a classroom via invite code
-router.post('/join/:invite_code', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route POST /classrooms/join/:invite_code
+ * @description Join a classroom using an invite code
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} invite_code - Classroom invite code
+ * @returns {Object} Joined classroom object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Already a member or classroom completed
+ * @throws {AuthorizationError} 403 - Email domain mismatch
+ * @throws {NotFoundError} 404 - Invalid invite code
+ */
+router.post(
+  '/join/:invite_code',
+  decodeToken,
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const inviteCode = req.params.invite_code;
     const userUuid = req.user.uuid;
+    const userEmail = req.user.email;
 
-    const classroom = await pg.get()('classrooms')
-      .where({ invite_code: inviteCode })
-      .first();
+    // Join the classroom as a student (service will handle email domain validation)
+    const joinedClassroom = await classroomService.joinClassroom(inviteCode, userUuid, 'student', userEmail);
 
-    if (!classroom) {
-      return res.status(404).send({ message: "Invalid invite code" });
-    }
-
-    // Check email domain restriction
-    if (classroom.allowed_email_domain) {
-      const user = await pg.get()('users')
-        .where({ uuid: userUuid })
-        .first();
-
-      const userEmailDomain = user.email.split('@')[1];
-      if (userEmailDomain !== classroom.allowed_email_domain) {
-        return res.status(403).send({
-          message: `Only users with @${classroom.allowed_email_domain} email addresses can join this classroom`
-        });
-      }
-    }
-
-    // Check if already a member
-    const existingMember = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroom.uuid, user_uuid: userUuid })
-      .first();
-
-    if (existingMember) {
-      return res.status(400).send({ message: "Already a member of this classroom" });
-    }
-
-    // Add as student
-    await pg.get()('classroom_members').insert({
-      classroom_uuid: classroom.uuid,
-      user_uuid: userUuid,
-      role: 'student'
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...joinedClassroom,
+      role: 'student',
+      message: 'Successfully joined classroom'
     });
+  })
+);
 
-    res.status(200).send({ ...classroom, role: 'student', message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error joining classroom" });
-  }
-});
-
-// Get invite link for a classroom (teacher only)
-router.get('/:uuid/invite', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route GET /classrooms/:uuid/invite
+ * @description Get invite code for a classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Object containing invite code
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can get invite codes
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/invite',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
     const userUuid = req.user.uuid;
 
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
+    const inviteCode = await classroomService.getInviteCode(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can get invite links" });
-    }
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      invite_code: inviteCode
+    });
+  })
+);
 
-    const classroom = await pg.get()('classrooms')
-      .where({ uuid: classroomUuid })
-      .first();
-
-    if (!classroom) {
-      return res.status(404).send({ message: "Classroom not found" });
-    }
-
-    res.status(200).send({ invite_code: classroom.invite_code });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error getting invite code" });
-  }
-});
-
-// Remove student from classroom (teacher only) - sets active to false
-router.delete('/:uuid/students/:student_uuid', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route DELETE /classrooms/:uuid/students/:student_uuid
+ * @description Remove student from classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @param {string} student_uuid - Student UUID to remove
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or user is not a student
+ * @throws {AuthorizationError} 403 - Only teachers can remove students
+ * @throws {NotFoundError} 404 - Student not found in classroom
+ */
+router.delete(
+  '/:uuid/students/:student_uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  validateUUID('student_uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
     const studentUuid = req.params.student_uuid;
     const userUuid = req.user.uuid;
 
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
+    await classroomService.removeStudent(classroomUuid, studentUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can remove students" });
-    }
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Student removed from classroom'
+    });
+  })
+);
 
-    // Check if student is a member
-    const studentMembership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid, role: 'student' })
-      .first();
-
-    if (!studentMembership) {
-      return res.status(404).send({ message: "Student not found in this classroom" });
-    }
-
-    // Check if student has feedback
-    const hasFeedback = await pg.get()('feedback')
-      .where({ classroom_uuid: classroomUuid, student_uuid: studentUuid })
-      .first();
-
-    if (hasFeedback) {
-      // Set active to false instead of deleting
-      await pg.get()('classroom_members')
-        .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid })
-        .update({ active: false });
-      res.status(200).send({ message: "Student deactivated (has feedback history)", active: false });
-    } else {
-      // Delete the membership completely
-      await pg.get()('classroom_members')
-        .where({ classroom_uuid: classroomUuid, user_uuid: studentUuid })
-        .delete();
-      res.status(200).send({ message: "Student removed from classroom", deleted: true });
-    }
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error removing student" });
-  }
-});
-
-// Leave classroom (student only)
-router.post('/:uuid/leave', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route POST /classrooms/:uuid/leave
+ * @description Leave a classroom (student only)
+ * @access Protected (Student only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only students can leave classrooms
+ * @throws {NotFoundError} 404 - Not a member of this classroom
+ */
+router.post(
+  '/:uuid/leave',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
     const userUuid = req.user.uuid;
 
-    // Check if user is student
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'student' })
-      .first();
+    await classroomService.leaveClassroom(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only students can leave classrooms" });
-    }
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Successfully left classroom'
+    });
+  })
+);
 
-    // Check if student has feedback
-    const hasFeedback = await pg.get()('feedback')
-      .where({ classroom_uuid: classroomUuid, student_uuid: userUuid })
-      .first();
-
-    if (hasFeedback) {
-      // Set active to false instead of deleting
-      await pg.get()('classroom_members')
-        .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-        .update({ active: false });
-      res.status(200).send({ message: "Left classroom (feedback history preserved)", active: false });
-    } else {
-      // Delete the membership completely
-      await pg.get()('classroom_members')
-        .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-        .delete();
-      res.status(200).send({ message: "Left classroom", deleted: true });
-    }
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error leaving classroom" });
-  }
-});
-
-// Rejoin classroom (student only - reactivate membership)
-router.post('/:uuid/rejoin', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route POST /classrooms/:uuid/rejoin
+ * @description Rejoin a classroom (reactivate inactive membership)
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or already active member
+ * @throws {NotFoundError} 404 - No membership found for this classroom
+ */
+router.post(
+  '/:uuid/rejoin',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
     const userUuid = req.user.uuid;
 
-    // Check if user has inactive membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'student' })
-      .first();
+    await classroomService.rejoinClassroom(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(404).send({ message: "No membership found for this classroom" });
-    }
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Successfully rejoined classroom',
+      active: true
+    });
+  })
+);
 
-    if (membership.active) {
-      return res.status(400).send({ message: "Already an active member of this classroom" });
-    }
-
-    // Check if classroom is completed
-    const classroom = await pg.get()('classrooms')
-      .where({ uuid: classroomUuid })
-      .first();
-
-    if (classroom && classroom.completed) {
-      return res.status(403).send({ message: "Cannot rejoin a completed classroom" });
-    }
-
-    // Reactivate membership
-    await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .update({ active: true });
-
-    res.status(200).send({ message: "Rejoined classroom", active: true });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error rejoining classroom" });
-  }
-});
-
-// Mark classroom as completed (teacher only)
-router.post('/:uuid/complete', decodeToken, async (req, res) => {
-  try {
+/**
+ * @route POST /classrooms/:uuid/complete
+ * @description Mark classroom as completed (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Success message with completion status
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or classroom already completed
+ * @throws {AuthorizationError} 403 - Only teachers can complete classrooms
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.post(
+  '/:uuid/complete',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
     const classroomUuid = req.params.uuid;
     const userUuid = req.user.uuid;
 
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
+    await classroomService.completeClassroom(classroomUuid, userUuid);
 
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can complete classrooms" });
-    }
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Classroom marked as completed',
+      completed: true
+    });
+  })
+);
 
-    // Check if already completed
-    const classroom = await pg.get()('classrooms')
-      .where({ uuid: classroomUuid })
-      .first();
-
-    if (!classroom) {
-      return res.status(404).send({ message: "Classroom not found" });
-    }
-
-    if (classroom.completed) {
-      return res.status(400).send({ message: "Classroom is already completed" });
-    }
-
-    // Mark as completed
-    await pg.get()('classrooms')
-      .where({ uuid: classroomUuid })
-      .update({
-        completed: true,
-        completed_at: pg.get().fn.now()
-      });
-
-    res.status(200).send({ message: "Classroom marked as completed", completed: true });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error completing classroom" });
-  }
-});
-
-module.exports = router
+module.exports = router;

@@ -282,7 +282,7 @@ export default function TeacherView({
   )
 
   return (
-    <>
+    <div style={{padding: '50px' }}>
       {error && <Alert type="error">{error}</Alert>}
 
       {isCompleted && (
@@ -300,6 +300,6 @@ export default function TeacherView({
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-    </>
+    </div>
   )
 }

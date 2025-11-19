@@ -1,540 +1,337 @@
-const express = require('express')
-const router = express.Router()
-const multer = require('multer')
-const path = require('path')
-const fs = require('fs')
-const { checkBodyFields } = require("./../helpers/bodyHelpers");
-const { uuidv4 } = require("./../helpers/uuidHelpers");
-const { decodeToken } = require("./../helpers/authHelpers")
-const pg = require('./../db/db.js')
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const container = require('../container');
+const { decodeToken } = require('../helpers/authHelpers');
+const { asyncHandler, HTTP_STATUS } = require('../middleware/errorHandler');
+const {
+  validateRequiredFields,
+  validateUUID,
+  sanitizeText
+} = require('../middleware/validation');
+const { v4: uuidv4 } = require('uuid');
 
 // Configure multer for image uploads
-const uploadDir = path.join(__dirname, '../../uploads')
+const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true })
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir)
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`
-    cb(null, uniqueName)
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
   }
-})
+});
 
 const fileFilter = (req, file, cb) => {
-  console.log(file.mimetype)
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain', 'application/pdf']
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'text/plain', 'application/pdf'];
   if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true)
+    cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed'), false)
+    cb(new Error('Only image files and PDF documents are allowed'), false);
   }
-}
+};
 
 const upload = multer({
   storage,
   fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-})
+});
 
-// Get feedback for a student in a classroom
-router.get('/classroom/:classroom_uuid/student/:student_uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route GET /feedback/classroom/:classroom_uuid/student/:student_uuid
+ * @description Get feedback for a student in a classroom
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @param {string} student_uuid - Student UUID
+ * @returns {Array<Object>} Array of feedback objects with images and documents
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not authorized to view this feedback
+ */
+router.get(
+  '/classroom/:classroom_uuid/student/:student_uuid',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  validateUUID('student_uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const classroomUuid = req.params.classroom_uuid;
     const studentUuid = req.params.student_uuid;
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Students can only view their own feedback
-    if (membership.role === 'student' && studentUuid !== userUuid) {
-      return res.status(403).send({ message: "Students can only view their own feedback" });
-    }
-
-    const feedback = await pg.get()('feedback')
-      .join('users', 'feedback.created_by_uuid', 'users.uuid')
-      .where({
-        classroom_uuid: classroomUuid,
-        student_uuid: studentUuid
-      })
-      .select(
-        'feedback.*',
-        'users.first_name as created_by_first_name',
-        'users.last_name as created_by_last_name'
-      )
-      .orderBy('feedback.created_at', 'desc');
-
-    // Get images and documents for each feedback
-    for (let fb of feedback) {
-      const images = await pg.get()('feedback_images')
-        .where({ feedback_uuid: fb.uuid })
-        .select('*');
-      fb.images = images;
-
-      const documents = await pg.get()('feedback_documents')
-        .where({ feedback_uuid: fb.uuid })
-        .select('*');
-      fb.documents = documents;
-    }
-
-    res.status(200).send(feedback);
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching feedback" });
-  }
-});
-
-// Get all feedback for current user (student) in a classroom
-router.get('/classroom/:classroom_uuid/my-feedback', decodeToken, async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    const feedback = await feedbackService.getStudentFeedback(classroomUuid, studentUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json(feedback);
+  })
+);
+
+/**
+ * @route GET /feedback/classroom/:classroom_uuid/my-feedback
+ * @description Get all feedback for current user (student) in a classroom
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @returns {Array<Object>} Array of feedback objects with images and documents
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ */
+router.get(
+  '/classroom/:classroom_uuid/my-feedback',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const classroomUuid = req.params.classroom_uuid;
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    const feedback = await pg.get()('feedback')
-      .join('users', 'feedback.created_by_uuid', 'users.uuid')
-      .where({
-        classroom_uuid: classroomUuid,
-        student_uuid: userUuid
-      })
-      .select(
-        'feedback.*',
-        'users.first_name as created_by_first_name',
-        'users.last_name as created_by_last_name'
-      )
-      .orderBy('feedback.created_at', 'desc');
-
-    // Get images and documents for each feedback
-    for (let fb of feedback) {
-      const images = await pg.get()('feedback_images')
-        .where({ feedback_uuid: fb.uuid })
-        .select('*');
-      fb.images = images;
-
-      const documents = await pg.get()('feedback_documents')
-        .where({ feedback_uuid: fb.uuid })
-        .select('*');
-      fb.documents = documents;
-    }
-
-    res.status(200).send(feedback);
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching feedback" });
-  }
-});
-
-// Create feedback (teachers can give feedback to students, students can add their own)
-router.post('/', decodeToken, async (req, res) => {
-  if (!req.body) {
-    return res.status(401).send({ message: "No body" });
-  }
-
-  if (!checkBodyFields(req.body, ["classroom_uuid", "student_uuid", "content"])) {
-    return res.status(402).send({ fields: "no" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    const feedback = await feedbackService.getStudentFeedback(classroomUuid, userUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json(feedback);
+  })
+);
+
+/**
+ * @route POST /feedback
+ * @description Create feedback (teachers can give feedback to students, students can add their own)
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @body {string} classroom_uuid - Classroom UUID
+ * @body {string} student_uuid - Student UUID
+ * @body {string} content - Feedback content
+ * @returns {Object} Created feedback object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Missing or invalid fields
+ * @throws {AuthorizationError} 403 - Not authorized to create feedback
+ */
+router.post(
+  '/',
+  decodeToken,
+  validateRequiredFields(['classroom_uuid', 'student_uuid', 'content']),
+  sanitizeText(['content'], 5000),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const { classroom_uuid, student_uuid, content } = req.body;
-
-    // Check if classroom is completed
-    const classroom = await pg.get()('classrooms')
-      .where({ uuid: classroom_uuid })
-      .first();
-
-    if (classroom && classroom.completed) {
-      return res.status(403).send({ message: "Cannot add feedback to a completed classroom" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Students can only add feedback for themselves
-    if (membership.role === 'student' && student_uuid !== userUuid) {
-      return res.status(403).send({ message: "Students can only add feedback for themselves" });
-    }
-
-    // Check that the student is a member of the classroom
-    const studentMembership = await pg.get()('classroom_members')
-      .where({ classroom_uuid, user_uuid: student_uuid, role: 'student' })
-      .first();
-
-    if (!studentMembership) {
-      return res.status(400).send({ message: "Student is not a member of this classroom" });
-    }
-
-    // Check if student is active (not left/removed)
-    if (!studentMembership.active) {
-      return res.status(403).send({ message: "Cannot add feedback for inactive student" });
-    }
-
-    const feedbackData = {
-      uuid: uuidv4(),
-      classroom_uuid,
-      student_uuid,
-      created_by_uuid: userUuid,
-      content,
-      locked: false
-    };
-
-    const [feedback] = await pg.get()('feedback')
-      .insert(feedbackData)
-      .returning('*');
-
-    res.status(200).send({ ...feedback, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(501).send({ message: "Error creating feedback" });
-  }
-});
-
-// Update feedback content
-router.put('/:uuid', decodeToken, async (req, res) => {
-  if (!req.body || !req.body.content) {
-    return res.status(402).send({ message: "content required" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    const feedback = await feedbackService.createFeedback(
+      {
+        classroom_uuid,
+        student_uuid,
+        content
+      },
+      userUuid
+    );
+
+    res.status(HTTP_STATUS.CREATED).json({
+      ...feedback,
+      message: 'success'
+    });
+  })
+);
+
+/**
+ * @route PUT /feedback/:uuid
+ * @description Update feedback content
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Feedback UUID
+ * @body {string} content - Updated feedback content
+ * @returns {Object} Updated feedback object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or missing content
+ * @throws {AuthorizationError} 403 - Not authorized to edit this feedback
+ * @throws {NotFoundError} 404 - Feedback not found
+ */
+router.put(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  validateRequiredFields(['content']),
+  sanitizeText(['content'], 5000),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const feedbackUuid = req.params.uuid;
     const { content } = req.body;
-
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Teachers can always edit their own feedback
-    // Students can only edit their own feedback if not locked
-    if (feedback.created_by_uuid !== userUuid) {
-      return res.status(403).send({ message: "Can only edit your own feedback" });
-    }
-
-    if (membership.role === 'student' && feedback.locked) {
-      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
-    }
-
-    await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .update({ content, updated_at: pg.get().fn.now() });
-
-    const [updatedFeedback] = await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .select('*');
-
-    res.status(200).send({ ...updatedFeedback, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error updating feedback" });
-  }
-});
-
-// Lock/unlock feedback (teacher only)
-router.put('/:uuid/lock', decodeToken, async (req, res) => {
-  if (req.body.locked === undefined) {
-    return res.status(402).send({ message: "locked field required" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    const updatedFeedback = await feedbackService.updateFeedback(feedbackUuid, content, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      ...updatedFeedback,
+      message: 'success'
+    });
+  })
+);
+
+/**
+ * @route PUT /feedback/:uuid/lock
+ * @description Lock/unlock feedback (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Feedback UUID
+ * @body {boolean} locked - Lock status
+ * @returns {Object} Success message with lock status
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or missing locked field
+ * @throws {AuthorizationError} 403 - Only teachers can lock/unlock feedback
+ * @throws {NotFoundError} 404 - Feedback not found
+ */
+router.put(
+  '/:uuid/lock',
+  decodeToken,
+  validateUUID('uuid'),
+  validateRequiredFields(['locked']),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const feedbackUuid = req.params.uuid;
     const { locked } = req.body;
-
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can lock/unlock feedback" });
-    }
-
-    await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .update({ locked });
-
-    res.status(200).send({ message: "success", locked });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error locking/unlocking feedback" });
-  }
-});
-
-// Upload images for feedback
-router.post('/:uuid/images', decodeToken, upload.array('images', 10), async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    await feedbackService.lockFeedback(feedbackUuid, locked, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'success',
+      locked
+    });
+  })
+);
+
+/**
+ * @route POST /feedback/:uuid/images
+ * @description Upload images for feedback
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Feedback UUID
+ * @returns {Object} Object with images array
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or no images uploaded
+ * @throws {AuthorizationError} 403 - Not authorized to add images
+ * @throws {NotFoundError} 404 - Feedback not found
+ */
+router.post(
+  '/:uuid/images',
+  decodeToken,
+  validateUUID('uuid'),
+  upload.array('images', 10),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const feedbackUuid = req.params.uuid;
-
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check if user created this feedback
-    if (feedback.created_by_uuid !== userUuid) {
-      return res.status(403).send({ message: "Can only add images to your own feedback" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Students can't add images if feedback is locked
-    if (membership.role === 'student' && feedback.locked) {
-      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
-    }
+    const userUuid = req.user.uuid;
 
     if (!req.files || req.files.length === 0) {
-      return res.status(400).send({ message: "No images uploaded" });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'No images uploaded'
+      });
     }
 
-    const imageRecords = [];
-    for (const file of req.files) {
-      const imageData = {
-        uuid: uuidv4(),
-        feedback_uuid: feedbackUuid,
-        filename: file.filename,
-        original_name: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size
-      };
+    const images = await feedbackService.addImages(feedbackUuid, req.files, userUuid);
 
-      const [image] = await pg.get()('feedback_images')
-        .insert(imageData)
-        .returning('*');
+    res.status(HTTP_STATUS.CREATED).json({
+      images,
+      message: 'success'
+    });
+  })
+);
 
-      imageRecords.push(image);
-    }
-
-    res.status(200).send({ images: imageRecords, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error uploading images" });
-  }
-});
-
-// Delete an image from feedback
-router.delete('/images/:image_uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route DELETE /feedback/images/:image_uuid
+ * @description Delete an image from feedback
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} image_uuid - Image UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not authorized to delete this image
+ * @throws {NotFoundError} 404 - Image not found
+ */
+router.delete(
+  '/images/:image_uuid',
+  decodeToken,
+  validateUUID('image_uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const imageUuid = req.params.image_uuid;
-
-    const image = await pg.get()('feedback_images')
-      .where({ uuid: imageUuid })
-      .first();
-
-    if (!image) {
-      return res.status(404).send({ message: "Image not found" });
-    }
-
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: image.feedback_uuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check if user created this feedback
-    if (feedback.created_by_uuid !== userUuid) {
-      return res.status(403).send({ message: "Can only delete images from your own feedback" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (membership.role === 'student' && feedback.locked) {
-      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
-    }
-
-    // Delete file from disk
-    const filePath = path.join(uploadDir, image.filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    // Delete from database
-    await pg.get()('feedback_images')
-      .where({ uuid: imageUuid })
-      .delete();
-
-    res.status(200).send({ message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error deleting image" });
-  }
-});
-
-// Upload documents for feedback
-router.post('/:uuid/documents', decodeToken, upload.array('documents', 10), async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    await feedbackService.deleteImage(imageUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({ message: 'success' });
+  })
+);
+
+/**
+ * @route POST /feedback/:uuid/documents
+ * @description Upload documents for feedback
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Feedback UUID
+ * @returns {Object} Object with documents array
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or no documents uploaded
+ * @throws {AuthorizationError} 403 - Not authorized to add documents
+ * @throws {NotFoundError} 404 - Feedback not found
+ */
+router.post(
+  '/:uuid/documents',
+  decodeToken,
+  validateUUID('uuid'),
+  upload.array('documents', 10),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const feedbackUuid = req.params.uuid;
-
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: feedbackUuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check if user created this feedback
-    if (feedback.created_by_uuid !== userUuid) {
-      return res.status(403).send({ message: "Can only add documents to your own feedback" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Students can't add documents if feedback is locked
-    if (membership.role === 'student' && feedback.locked) {
-      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
-    }
+    const userUuid = req.user.uuid;
 
     if (!req.files || req.files.length === 0) {
-      return res.status(400).send({ message: "No documents uploaded" });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'No documents uploaded'
+      });
     }
 
-    const documentRecords = [];
-    for (const file of req.files) {
-      const documentData = {
-        uuid: uuidv4(),
-        feedback_uuid: feedbackUuid,
-        filename: file.filename,
-        original_name: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size
-      };
+    const documents = await feedbackService.addDocuments(feedbackUuid, req.files, userUuid);
 
-      const [document] = await pg.get()('feedback_documents')
-        .insert(documentData)
-        .returning('*');
+    res.status(HTTP_STATUS.CREATED).json({
+      documents,
+      message: 'success'
+    });
+  })
+);
 
-      documentRecords.push(document);
-    }
-
-    res.status(200).send({ documents: documentRecords, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error uploading documents" });
-  }
-});
-
-// Delete a document from feedback
-router.delete('/documents/:document_uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route DELETE /feedback/documents/:document_uuid
+ * @description Delete a document from feedback
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} document_uuid - Document UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not authorized to delete this document
+ * @throws {NotFoundError} 404 - Document not found
+ */
+router.delete(
+  '/documents/:document_uuid',
+  decodeToken,
+  validateUUID('document_uuid'),
+  asyncHandler(async (req, res) => {
+    const feedbackService = container.get('feedbackService');
     const documentUuid = req.params.document_uuid;
+    const userUuid = req.user.uuid;
 
-    const document = await pg.get()('feedback_documents')
-      .where({ uuid: documentUuid })
-      .first();
+    await feedbackService.deleteDocument(documentUuid, userUuid);
 
-    if (!document) {
-      return res.status(404).send({ message: "Document not found" });
-    }
+    res.status(HTTP_STATUS.OK).json({ message: 'success' });
+  })
+);
 
-    const feedback = await pg.get()('feedback')
-      .where({ uuid: document.feedback_uuid })
-      .first();
-
-    if (!feedback) {
-      return res.status(404).send({ message: "Feedback not found" });
-    }
-
-    // Check if user created this feedback
-    if (feedback.created_by_uuid !== userUuid) {
-      return res.status(403).send({ message: "Can only delete documents from your own feedback" });
-    }
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: feedback.classroom_uuid, user_uuid: userUuid })
-      .first();
-
-    if (membership.role === 'student' && feedback.locked) {
-      return res.status(403).send({ message: "This feedback has been locked by the teacher" });
-    }
-
-    // Delete file from disk
-    const filePath = path.join(uploadDir, document.filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    // Delete from database
-    await pg.get()('feedback_documents')
-      .where({ uuid: documentUuid })
-      .delete();
-
-    res.status(200).send({ message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error deleting document" });
-  }
-});
-
-module.exports = router
+module.exports = router;

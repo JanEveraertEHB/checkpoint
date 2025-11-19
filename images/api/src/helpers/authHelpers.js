@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 
 const decodeToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -6,7 +7,7 @@ const decodeToken = (req, res, next) => {
     try {
       // Remove "Bearer " prefix if present
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
-      const decoded = jwt.verify(token, process.env.TOKEN_ENCRYPTION);
+      const decoded = jwt.verify(token, config.auth.jwtSecret);
       req.user = decoded
       next()
     } catch (err) {
