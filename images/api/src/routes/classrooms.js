@@ -52,8 +52,9 @@ router.get(
 
     const classroom = await classroomService.getClassroom(classroomUuid, userUuid);
 
-    // If user is a teacher, get all members (students)
+    // If user is a teacher, get all members (students) and pending members
     let students = [];
+    let pendingStudents = [];
     if (classroom.userRole === 'teacher') {
       const members = await classroomService.getClassroomMembers(classroomUuid, userUuid);
       students = members
@@ -65,6 +66,14 @@ router.get(
           email: member.email,
           active: member.active
         }));
+
+      // Get pending members
+      const pending = await classroomService.getPendingMembers(classroomUuid, userUuid);
+      pendingStudents = pending.map(p => ({
+        email: p.email,
+        pending: true,
+        created_at: p.created_at
+      }));
     }
 
     // Rename userRole and userActive for backward compatibility
@@ -74,7 +83,8 @@ router.get(
       ...classroomData,
       role: userRole,
       active: userActive,
-      students
+      students,
+      pendingStudents
     });
   })
 );
@@ -259,6 +269,109 @@ router.delete(
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Student removed from classroom'
+    });
+  })
+);
+
+/**
+ * @route POST /classrooms/:uuid/students/bulk
+ * @description Add students to classroom by email addresses (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @body {string[]} emails - Array of email addresses
+ * @returns {Object} Summary of additions (added, pending, already members, errors)
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or missing emails
+ * @throws {AuthorizationError} 403 - Only teachers can add students
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.post(
+  '/:uuid/students/bulk',
+  decodeToken,
+  validateUUID('uuid'),
+  validateRequiredFields(['emails']),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+    const { emails } = req.body;
+
+    // Validate that emails is an array
+    if (!Array.isArray(emails)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'emails must be an array'
+      });
+    }
+
+    const result = await classroomService.addStudentsByEmail(classroomUuid, emails, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...result,
+      message: 'Students processed successfully'
+    });
+  })
+);
+
+/**
+ * @route GET /classrooms/:uuid/pending
+ * @description Get pending members for a classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Array<Object>} Array of pending member objects
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can view pending members
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/pending',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const pendingMembers = await classroomService.getPendingMembers(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      pending: pendingMembers
+    });
+  })
+);
+
+/**
+ * @route DELETE /classrooms/:uuid/pending/:email
+ * @description Remove a pending member from classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @param {string} email - Email address to remove
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can remove pending members
+ */
+router.delete(
+  '/:uuid/pending/:email',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const email = req.params.email;
+    const userUuid = req.user.uuid;
+
+    await classroomService.removePendingMember(classroomUuid, email, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Pending member removed'
     });
   })
 );

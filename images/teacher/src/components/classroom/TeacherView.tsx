@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
 import { FeedbackForm, FeedbackItem } from '../feedback'
-import { InviteCodeDisplay } from '../classroom'
+import { InviteCodeDisplay, BulkEmailInput } from '../classroom'
 import { Notes } from '../notes'
 import { formatDate, getImageUrl, getDocumentUrl, stripHtmlTags } from '../../utils'
 import { colors, spacing, typography } from '../../styles/theme'
@@ -51,6 +51,8 @@ interface TeacherViewProps {
   onCompleteClassroom: () => void
   onDemandFeedback: (studentUuid: string) => void
   onUpdateClassroom: (updates: { name?: string; academic_year?: string; allowed_email_domain?: string | null }) => Promise<void>
+  onRefreshClassroom: () => void
+  onRemovePending: (email: string) => void
 }
 
 export default function TeacherView({
@@ -94,7 +96,9 @@ export default function TeacherView({
   timelineItems,
   onCompleteClassroom,
   onDemandFeedback,
-  onUpdateClassroom
+  onUpdateClassroom,
+  onRefreshClassroom,
+  onRemovePending
 }: TeacherViewProps) {
   const [activeTab, setActiveTab] = useState('feedback')
   const [showAddCheckpoint, setShowAddCheckpoint] = useState(false)
@@ -351,6 +355,15 @@ export default function TeacherView({
         </Button>
         {showInviteCode && <InviteCodeDisplay code={inviteCode} />}
       </div>
+
+      {!isCompleted && (
+        <div style={{ marginBottom: spacing.lg }}>
+          <BulkEmailInput
+            classroomUuid={classroom.uuid}
+            onSuccess={onRefreshClassroom}
+          />
+        </div>
+      )}
 
       <div style={{ marginBottom: spacing.lg }}>
         <h5>Checkpoints</h5>

@@ -22,10 +22,17 @@ export interface Classroom {
   teacher_first_name: string
   teacher_last_name: string
   students?: Student[]
+  pendingStudents?: PendingStudent[]
   completed?: boolean
   completed_at?: string | null
   active?: boolean
   allowed_email_domain?: string | null
+}
+
+export interface PendingStudent {
+  email: string
+  pending: true
+  created_at: string
 }
 
 export interface Student {

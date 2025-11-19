@@ -1,22 +1,26 @@
 import { Button } from '../common'
 import { colors, spacing, typography } from '../../styles/theme'
-import type { Student } from '../../types'
+import type { Student, PendingStudent } from '../../types'
 
 interface StudentListProps {
   students: Student[]
+  pendingStudents?: PendingStudent[]
   selectedStudentUuid?: string
   onSelectStudent: (student: Student) => void
   onRemoveStudent?: (student: Student) => void
+  onRemovePending?: (email: string) => void
 }
 
 export default function StudentList({
   students,
+  pendingStudents = [],
   selectedStudentUuid,
   onSelectStudent,
-  onRemoveStudent
+  onRemoveStudent,
+  onRemovePending
 }: StudentListProps) {
-  if (students.length === 0) {
-    return <p style={{ color: colors.textSecondary, padding: '50px' }}>No students yet. Share the invite code.</p>
+  if (students.length === 0 && pendingStudents.length === 0) {
+    return <p style={{ color: colors.textSecondary, padding: '50px' }}>No students yet. Share the invite code or add students by email.</p>
   }
 
   // Sort: active students first, then inactive
@@ -80,6 +84,53 @@ export default function StudentList({
             </li>
           )
         })}
+
+        {pendingStudents.length > 0 && (
+          <>
+            <li style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
+              <h5 style={{ color: colors.textSecondary, fontSize: typography.fontSizeSm }}>
+                Pending Invitations ({pendingStudents.length})
+              </h5>
+            </li>
+            {pendingStudents.map((pending) => (
+              <li
+                key={pending.email}
+                style={{
+                  marginBottom: spacing.xs,
+                  opacity: 0.6,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <span style={{ width: '100%' }}>
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    float: 'left',
+                    margin: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: colors.gray,
+                    border: `1px dashed ${colors.textMuted}`
+                  }}></div>
+                  {pending.email}
+                  <span style={{ color: colors.textMuted, fontSize: typography.fontSizeSm }}>
+                    {' '}(pending)
+                  </span>
+                </span>
+                {onRemovePending && (
+                  <Button
+                    variant="danger"
+                    size="small"
+                    onClick={() => onRemovePending(pending.email)}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </li>
+            ))}
+          </>
+        )}
       </ul>
     </div>
   )

@@ -77,6 +77,15 @@ export const rejoinClassroom = (classroom_uuid: string) =>
 export const completeClassroom = (classroom_uuid: string) =>
   api.post(`/classrooms/${classroom_uuid}/complete`)
 
+export const addStudentsByEmail = (classroom_uuid: string, emails: string[]) =>
+  api.post<{ added: any[], pending: any[], alreadyMembers: any[], errors: any[] }>(`/classrooms/${classroom_uuid}/students/bulk`, { emails })
+
+export const getPendingMembers = (classroom_uuid: string) =>
+  api.get<{ success: boolean, pending: Array<{ email: string, created_at: string }> }>(`/classrooms/${classroom_uuid}/pending`)
+
+export const removePendingMember = (classroom_uuid: string, email: string) =>
+  api.delete(`/classrooms/${classroom_uuid}/pending/${encodeURIComponent(email)}`)
+
 // Feedback APIs
 export const getFeedbackForStudent = (classroom_uuid: string, student_uuid: string) =>
   api.get<Feedback[]>(`/feedback/classroom/${classroom_uuid}/student/${student_uuid}`)

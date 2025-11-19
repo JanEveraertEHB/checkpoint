@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useClassroom, useCheckpoints, useFeedback, useTimeline } from '../hooks'
 import { Loading } from '../components/common'
 import { ClassroomHeader, TeacherView, StudentList } from '../components/classroom'
-import { removeStudentFromClassroom, completeClassroom, createFeedbackDemand, createClassroomWideFeedbackDemand, updateClassroom } from '../services/api'
+import { removeStudentFromClassroom, completeClassroom, createFeedbackDemand, createClassroomWideFeedbackDemand, updateClassroom, removePendingMember } from '../services/api'
 import type { Student } from '../types'
 
 export default function ClassroomDetail() {
@@ -191,6 +191,20 @@ export default function ClassroomDetail() {
     }
   }
 
+  // Handle removing pending member (teacher only)
+  const handleRemovePending = async (email: string) => {
+    if (!confirm(`Are you sure you want to remove the pending invitation for ${email}?`)) {
+      return
+    }
+
+    try {
+      await removePendingMember(uuid!, email)
+      refreshClassroom()
+    } catch (err) {
+      setClassroomError('Failed to remove pending invitation')
+    }
+  }
+
   // Handle marking classroom as completed (teacher only)
   const handleCompleteClassroom = async () => {
     if (!confirm('Are you sure you want to mark this classroom as completed? This action cannot be undone and will prevent any new feedback from being added.')) {
@@ -263,9 +277,11 @@ export default function ClassroomDetail() {
             <div className="twelve columns">
               <StudentList
                 students={classroom.students || []}
+                pendingStudents={classroom.pendingStudents || []}
                 selectedStudentUuid={selectedStudent?.uuid}
                 onSelectStudent={handleSelectStudent}
                 onRemoveStudent={handleRemoveStudent}
+                onRemovePending={handleRemovePending}
               />
             </div>
           </div>
@@ -315,6 +331,8 @@ export default function ClassroomDetail() {
             onCompleteClassroom={handleCompleteClassroom}
             onDemandFeedback={handleDemandFeedback}
             onUpdateClassroom={handleUpdateClassroom}
+            onRefreshClassroom={refreshClassroom}
+            onRemovePending={handleRemovePending}
           />
       </div>
     </div>

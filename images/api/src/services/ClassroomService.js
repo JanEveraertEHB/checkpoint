@@ -10,10 +10,14 @@ class ClassroomService {
    * Creates an instance of ClassroomService
    * @param {Object} classroomRepository - ClassroomRepository instance
    * @param {Object} authorizationService - AuthorizationService instance
+   * @param {Object} pendingMemberRepository - PendingMemberRepository instance
+   * @param {Object} userRepository - UserRepository instance
    */
-  constructor(classroomRepository, authorizationService) {
+  constructor(classroomRepository, authorizationService, pendingMemberRepository, userRepository) {
     this.classroomRepository = classroomRepository;
     this.authorizationService = authorizationService;
+    this.pendingMemberRepository = pendingMemberRepository;
+    this.userRepository = userRepository;
   }
 
   /**
@@ -378,6 +382,137 @@ class ClassroomService {
    */
   async isCompleted(classroomUuid) {
     return await this.classroomRepository.isCompleted(classroomUuid);
+  }
+
+  /**
+   * Add students by email addresses (bulk invitation)
+   * If a user with the email exists, add them immediately as a member
+   * Otherwise, add them as pending members who will auto-join on registration
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string[]} emails - Array of email addresses
+   * @param {string} teacherUuid - Teacher's UUID
+   * @returns {Promise<Object>} Summary of additions
+   * @throws {Error} Authorization error
+   */
+  async addStudentsByEmail(classroomUuid, emails, teacherUuid) {
+    // Only teachers can add students
+    await this.authorizationService.requireTeacher(classroomUuid, teacherUuid);
+
+    const classroom = await this.classroomRepository.findByUuid(classroomUuid);
+
+    if (!classroom) {
+      const error = new Error('Classroom not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if classroom is completed
+    if (classroom.completed_at) {
+      const error = new Error('Cannot add students to a completed classroom');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const result = {
+      added: [],
+      pending: [],
+      alreadyMembers: [],
+      errors: []
+    };
+
+    // Process each email
+    for (const email of emails) {
+      const emailLower = email.toLowerCase();
+
+      try {
+        // Check email domain restriction
+        if (classroom.allowed_email_domain) {
+          const emailDomain = emailLower.split('@')[1];
+          if (emailDomain !== classroom.allowed_email_domain) {
+            result.errors.push({
+              email: emailLower,
+              reason: `Email domain must be @${classroom.allowed_email_domain}`
+            });
+            continue;
+          }
+        }
+
+        // Check if user exists with this email
+        const user = await this.userRepository.findByEmail(emailLower);
+
+        if (user) {
+          // Check if already a member
+          const existingMembership = await this.classroomRepository.getMembership(classroomUuid, user.uuid);
+
+          if (existingMembership) {
+            if (existingMembership.active) {
+              result.alreadyMembers.push({ email: emailLower, uuid: user.uuid });
+            } else {
+              // Reactivate inactive membership
+              await this.classroomRepository.updateMembershipStatus(classroomUuid, user.uuid, true);
+              result.added.push({ email: emailLower, uuid: user.uuid, reactivated: true });
+            }
+          } else {
+            // Add as active member
+            await this.classroomRepository.addMember({
+              classroom_uuid: classroomUuid,
+              user_uuid: user.uuid,
+              role: 'student',
+              active: true
+            });
+            result.added.push({ email: emailLower, uuid: user.uuid });
+          }
+        } else {
+          // User doesn't exist yet, add as pending member
+          await this.pendingMemberRepository.create(classroomUuid, emailLower);
+          result.pending.push({ email: emailLower });
+        }
+      } catch (err) {
+        // Handle duplicate pending member or other errors
+        if (err.code === '23505') { // Unique constraint violation
+          result.errors.push({
+            email: emailLower,
+            reason: 'Already pending invitation'
+          });
+        } else {
+          result.errors.push({
+            email: emailLower,
+            reason: err.message
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get pending members for a classroom (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} teacherUuid - Teacher's UUID
+   * @returns {Promise<Array<Object>>} Array of pending member objects
+   * @throws {Error} Authorization error
+   */
+  async getPendingMembers(classroomUuid, teacherUuid) {
+    // Only teachers can see pending members
+    await this.authorizationService.requireTeacher(classroomUuid, teacherUuid);
+
+    return await this.pendingMemberRepository.getByClassroom(classroomUuid);
+  }
+
+  /**
+   * Remove a pending member (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} email - Email address to remove
+   * @param {string} teacherUuid - Teacher's UUID
+   * @returns {Promise<void>}
+   * @throws {Error} Authorization error
+   */
+  async removePendingMember(classroomUuid, email, teacherUuid) {
+    // Only teachers can remove pending members
+    await this.authorizationService.requireTeacher(classroomUuid, teacherUuid);
+
+    await this.pendingMemberRepository.remove(classroomUuid, email);
   }
 }
 

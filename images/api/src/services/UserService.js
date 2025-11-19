@@ -14,16 +14,18 @@ class UserService {
    * @param {Object} classroomRepository - ClassroomRepository instance
    * @param {Object} feedbackRepository - FeedbackRepository instance
    * @param {Object} fileStorageService - FileStorageService instance
+   * @param {Object} pendingMemberRepository - PendingMemberRepository instance
    * @param {Object} db - Database instance (for transactions)
    * @param {Object} config - Configuration object
    * @param {string} config.jwtSecret - JWT secret key
    * @param {number} config.saltRounds - Bcrypt salt rounds
    */
-  constructor(userRepository, classroomRepository, feedbackRepository, fileStorageService, db, config) {
+  constructor(userRepository, classroomRepository, feedbackRepository, fileStorageService, pendingMemberRepository, db, config) {
     this.userRepository = userRepository;
     this.classroomRepository = classroomRepository;
     this.feedbackRepository = feedbackRepository;
     this.fileStorageService = fileStorageService;
+    this.pendingMemberRepository = pendingMemberRepository;
     this.db = db;
     this.config = config;
   }
@@ -108,6 +110,30 @@ class UserService {
       last_name,
       user_type: user_type || 'student'
     });
+
+    // Auto-join pending classrooms
+    const pendingInvitations = await this.pendingMemberRepository.getByEmail(email);
+
+    if (pendingInvitations.length > 0) {
+      // Add user to all classrooms they were invited to
+      for (const invitation of pendingInvitations) {
+        try {
+          // Add as student member
+          await this.classroomRepository.addMember({
+            classroom_uuid: invitation.classroom_uuid,
+            user_uuid: newUser.uuid,
+            role: 'student',
+            active: true
+          });
+        } catch (err) {
+          // Ignore errors (e.g., if already a member due to race condition)
+          console.error(`Failed to auto-join classroom ${invitation.classroom_uuid}:`, err.message);
+        }
+      }
+
+      // Remove all pending invitations for this email
+      await this.pendingMemberRepository.removeByEmail(email);
+    }
 
     // Generate token
     const token = jwt.sign(

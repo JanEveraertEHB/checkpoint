@@ -13,6 +13,7 @@ const ClassroomRepository = require('./repositories/ClassroomRepository');
 const CheckpointRepository = require('./repositories/CheckpointRepository');
 const FeedbackRepository = require('./repositories/FeedbackRepository');
 const NoteRepository = require('./repositories/NoteRepository');
+const PendingMemberRepository = require('./repositories/PendingMemberRepository');
 
 // Services
 const AuthorizationService = require('./services/AuthorizationService');
@@ -50,6 +51,7 @@ class Container {
     this.services.checkpointRepository = new CheckpointRepository(db);
     this.services.feedbackRepository = new FeedbackRepository(db);
     this.services.noteRepository = new NoteRepository(db);
+    this.services.pendingMemberRepository = new PendingMemberRepository(db);
 
     // Initialize Infrastructure Services
     this.services.authorizationService = new AuthorizationService(
@@ -74,6 +76,7 @@ class Container {
       this.services.classroomRepository,
       this.services.feedbackRepository,
       this.services.fileStorageService,
+      this.services.pendingMemberRepository,
       db,
       {
         jwtSecret: config.auth.jwtSecret,
@@ -83,7 +86,9 @@ class Container {
 
     this.services.classroomService = new ClassroomService(
       this.services.classroomRepository,
-      this.services.authorizationService
+      this.services.authorizationService,
+      this.services.pendingMemberRepository,
+      this.services.userRepository
     );
 
     this.services.checkpointService = new CheckpointService(
