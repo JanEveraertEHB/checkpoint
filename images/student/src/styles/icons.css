@@ -9,6 +9,7 @@
   height: 6px;
   border-radius: 1px;
   border: solid 1px currentColor;
+  background-color: currentColor;
 }
 
 .flag.icon:before {

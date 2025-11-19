@@ -44,12 +44,13 @@ export default function Navbar() {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
+
           <div>
-            <Link to="/" className="subtleLink">
+            <Link to="/" className="subtleLink" style={{float: 'left'}}>
               <img className="logo" src={icon} />
             </Link>
 
-            <Link to="/home">Classrooms</Link>
+            <Link to="/home" style={{top: '7px', display: 'block', float: 'left', marginTop: '2px'}}>Classrooms</Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link to="/profile">
