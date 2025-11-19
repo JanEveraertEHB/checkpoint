@@ -63,7 +63,7 @@ services:
       - "traefik.http.routers.teacher-http.entrypoints=web"
       - "traefik.http.routers.teacher-http.service=teacher"
       # HTTPS router
-      - "traefik.http.routers.teacher.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.teacher.rule=Host(`teacher.${DOMAIN}`)"
       - "traefik.http.routers.teacher.entrypoints=websecure"
       - "traefik.http.routers.teacher.tls.certresolver=letsencrypt"
       - "traefik.http.services.teacher.loadbalancer.server.port=80"
