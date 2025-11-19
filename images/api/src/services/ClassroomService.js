@@ -76,13 +76,14 @@ class ClassroomService {
    * Create a new classroom
    * @param {Object} classroomData - Classroom data
    * @param {string} classroomData.name - Classroom name
-   * @param {string} classroomData.description - Classroom description
+   * @param {string} classroomData.academic_year - Academic year
+   * @param {string} [classroomData.allowed_email_domain] - Optional email domain restriction
    * @param {string} creatorUuid - Creator's UUID
    * @returns {Promise<Object>} Created classroom object
    * @throws {Error} Creation error
    */
   async createClassroom(classroomData, creatorUuid) {
-    const { name, description } = classroomData;
+    const { name, academic_year, allowed_email_domain } = classroomData;
 
     // Generate unique invite code
     const inviteCode = await this.generateUniqueInviteCode();
@@ -91,9 +92,10 @@ class ClassroomService {
     const classroom = await this.classroomRepository.create({
       uuid: uuidv4(),
       name,
-      description,
+      academic_year,
+      teacher_uuid: creatorUuid,
       invite_code: inviteCode,
-      created_by_uuid: creatorUuid
+      allowed_email_domain: allowed_email_domain || null
     });
 
     // Add creator as teacher
@@ -113,10 +115,11 @@ class ClassroomService {
    * @param {string} inviteCode - Invite code
    * @param {string} userUuid - User's UUID
    * @param {string} userRole - User's role
+   * @param {string} userEmail - User's email (for domain validation)
    * @returns {Promise<Object>} Classroom object
    * @throws {Error} Join error
    */
-  async joinClassroom(inviteCode, userUuid, userRole) {
+  async joinClassroom(inviteCode, userUuid, userRole, userEmail) {
     // Find classroom by invite code
     const classroom = await this.classroomRepository.findByInviteCode(inviteCode);
 
@@ -131,6 +134,16 @@ class ClassroomService {
       const error = new Error('This classroom has been completed');
       error.statusCode = 400;
       throw error;
+    }
+
+    // Check email domain restriction
+    if (classroom.allowed_email_domain && userEmail) {
+      const userEmailDomain = userEmail.split('@')[1];
+      if (userEmailDomain !== classroom.allowed_email_domain) {
+        const error = new Error(`Only users with @${classroom.allowed_email_domain} email addresses can join this classroom`);
+        error.statusCode = 403;
+        throw error;
+      }
     }
 
     // Check if user is already a member

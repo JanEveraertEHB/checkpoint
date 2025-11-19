@@ -29,7 +29,7 @@ class EmailService {
    * @returns {Object} Nodemailer transporter
    */
   createTransporter() {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: this.config.host,
       port: this.config.port,
       secure: this.config.secure,

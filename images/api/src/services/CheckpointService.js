@@ -50,14 +50,14 @@ class CheckpointService {
    * Create a new checkpoint (teacher only)
    * @param {Object} checkpointData - Checkpoint data
    * @param {string} checkpointData.classroom_uuid - Classroom's UUID
-   * @param {string} checkpointData.title - Checkpoint title
+   * @param {string} checkpointData.name - Checkpoint name
    * @param {string} checkpointData.description - Checkpoint description
    * @param {string} userUuid - User's UUID
    * @returns {Promise<Object>} Created checkpoint object
    * @throws {Error} Authorization or validation error
    */
   async createCheckpoint(checkpointData, userUuid) {
-    const { classroom_uuid, title, description } = checkpointData;
+    const { classroom_uuid, name, description } = checkpointData;
 
     // Only teachers can create checkpoints
     await this.authorizationService.requireTeacher(classroom_uuid, userUuid);
@@ -77,7 +77,7 @@ class CheckpointService {
     return await this.checkpointRepository.create({
       uuid: uuidv4(),
       classroom_uuid,
-      title,
+      name,
       description,
       order_index: maxOrderIndex + 1
     });
@@ -87,7 +87,7 @@ class CheckpointService {
    * Update a checkpoint (teacher only)
    * @param {string} checkpointUuid - Checkpoint's UUID
    * @param {Object} updates - Fields to update
-   * @param {string} [updates.title] - Updated title
+   * @param {string} [updates.name] - Updated name
    * @param {string} [updates.description] - Updated description
    * @param {string} userUuid - User's UUID
    * @returns {Promise<Object>} Updated checkpoint object
@@ -230,10 +230,8 @@ class CheckpointService {
     }
 
     return await this.checkpointRepository.markAsReached({
-      uuid: uuidv4(),
       checkpoint_uuid: checkpointUuid,
-      student_uuid: studentUuid,
-      marked_by_uuid: teacherUuid
+      student_uuid: studentUuid
     });
   }
 

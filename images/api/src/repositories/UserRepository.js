@@ -44,8 +44,8 @@ class UserRepository {
    * @param {string} userData.uuid - User's UUID
    * @param {string} userData.email - User's email
    * @param {string} userData.password - Hashed password
-   * @param {string} userData.name - User's name
-   * @param {string} userData.role - User's role (student/teacher)
+   * @param {string} userData.first_name - User's first name
+   * @param {string} userData.last_name - User's last name
    * @returns {Promise<Object>} Created user object
    * @throws {Error} Database insertion error
    */
@@ -61,8 +61,10 @@ class UserRepository {
    * Update user profile information
    * @param {string} uuid - User's UUID
    * @param {Object} updates - Fields to update
-   * @param {string} [updates.name] - Updated name
+   * @param {string} [updates.first_name] - Updated first name
+   * @param {string} [updates.last_name] - Updated last name
    * @param {string} [updates.email] - Updated email
+   * @param {string} [updates.date_of_birth] - Updated date of birth
    * @returns {Promise<Object>} Updated user object
    * @throws {Error} Database update error
    */
@@ -106,14 +108,17 @@ class UserRepository {
    */
   async softDelete(uuid, trx) {
     const dbContext = trx || this.db;
+    const { v4: uuidv4 } = require('uuid');
 
     await dbContext('users')
       .where({ uuid })
       .update({
-        email: `deleted_${uuid}@deleted.com`,
-        name: 'Deleted User',
-        password: '',
-        deleted_at: dbContext.fn.now()
+        first_name: '[Deleted]',
+        last_name: 'User',
+        email: `deleted_${uuid}@deleted.local`,
+        password: await require('bcrypt').hash(uuidv4(), 10),
+        deleted_at: dbContext.fn.now(),
+        date_of_birth: null
       });
   }
 

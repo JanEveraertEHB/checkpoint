@@ -1,393 +1,318 @@
-const express = require('express')
-const router = express.Router()
-const { checkBodyFields } = require("./../helpers/bodyHelpers");
-const { uuidv4 } = require("./../helpers/uuidHelpers");
-const { decodeToken } = require("./../helpers/authHelpers")
-const pg = require('./../db/db.js')
+const express = require('express');
+const router = express.Router();
+const container = require('../container');
+const { decodeToken } = require('../helpers/authHelpers');
+const { asyncHandler, HTTP_STATUS } = require('../middleware/errorHandler');
+const {
+  validateRequiredFields,
+  validateUUID
+} = require('../middleware/validation');
 
-// Get all checkpoints for a classroom
-router.get('/classroom/:classroom_uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route GET /checkpoints/classroom/:classroom_uuid
+ * @description Get all checkpoints for a classroom
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @returns {Array<Object>} Array of checkpoint objects
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ */
+router.get(
+  '/classroom/:classroom_uuid',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const classroomUuid = req.params.classroom_uuid;
-
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    const checkpoints = await pg.get()('checkpoints')
-      .where({ classroom_uuid: classroomUuid })
-      .orderBy('order_index', 'asc');
-
-    res.status(200).send(checkpoints);
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching checkpoints" });
-  }
-});
-
-// Check if any checkpoint in a classroom has been reached by any student
-router.get('/classroom/:classroom_uuid/has-progress', decodeToken, async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    const checkpoints = await checkpointService.getClassroomCheckpoints(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json(checkpoints);
+  })
+);
+
+/**
+ * @route GET /checkpoints/classroom/:classroom_uuid/has-progress
+ * @description Check if any checkpoint in a classroom has been reached by any student
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @returns {Object} Object with has_progress boolean
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can check progress
+ */
+router.get(
+  '/classroom/:classroom_uuid/has-progress',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const classroomUuid = req.params.classroom_uuid;
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can check checkpoint progress" });
-    }
-
-    const reachedCheckpoint = await pg.get()('student_checkpoints')
-      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
-      .where({ 'checkpoints.classroom_uuid': classroomUuid })
-      .first();
-
-    res.status(200).send({ has_progress: !!reachedCheckpoint });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error checking checkpoint progress" });
-  }
-});
-
-// Create a new checkpoint (teacher only)
-router.post('/', decodeToken, async (req, res) => {
-  if (!req.body) {
-    return res.status(401).send({ message: "No body" });
-  }
-
-  if (!checkBodyFields(req.body, ["classroom_uuid", "name"])) {
-    return res.status(402).send({ fields: "no" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    const hasProgress = await checkpointService.hasAnyProgress(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({ has_progress: hasProgress });
+  })
+);
+
+/**
+ * @route POST /checkpoints
+ * @description Create a new checkpoint (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @body {string} classroom_uuid - Classroom UUID
+ * @body {string} name - Checkpoint name
+ * @body {string} [description] - Optional checkpoint description
+ * @returns {Object} Created checkpoint object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Missing or invalid fields
+ * @throws {AuthorizationError} 403 - Only teachers can create checkpoints
+ */
+router.post(
+  '/',
+  decodeToken,
+  validateRequiredFields(['classroom_uuid', 'name']),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const { classroom_uuid, name, description } = req.body;
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can create checkpoints" });
-    }
-
-    // Get next order index
-    const maxOrder = await pg.get()('checkpoints')
-      .where({ classroom_uuid })
-      .max('order_index as max')
-      .first();
-
-    const orderIndex = (maxOrder.max || 0) + 1;
-
-    const checkpointData = {
-      uuid: uuidv4(),
-      classroom_uuid,
-      name,
-      description: description || '',
-      order_index: orderIndex
-    };
-
-    const [checkpoint] = await pg.get()('checkpoints')
-      .insert(checkpointData)
-      .returning('*');
-
-    res.status(200).send({ ...checkpoint, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(501).send({ message: "Error creating checkpoint" });
-  }
-});
-
-// Update a checkpoint (teacher only)
-router.put('/:uuid', decodeToken, async (req, res) => {
-  if (!req.body) {
-    return res.status(401).send({ message: "No body" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    const checkpoint = await checkpointService.createCheckpoint(
+      {
+        classroom_uuid,
+        name,
+        description: description || ''
+      },
+      userUuid
+    );
+
+    res.status(HTTP_STATUS.CREATED).json({
+      ...checkpoint,
+      message: 'success'
+    });
+  })
+);
+
+/**
+ * @route PUT /checkpoints/:uuid
+ * @description Update a checkpoint (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Checkpoint UUID
+ * @body {string} [name] - Updated checkpoint name
+ * @body {string} [description] - Updated checkpoint description
+ * @returns {Object} Updated checkpoint object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or no fields to update
+ * @throws {AuthorizationError} 403 - Only teachers can update checkpoints
+ * @throws {NotFoundError} 404 - Checkpoint not found
+ */
+router.put(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const checkpointUuid = req.params.uuid;
     const { name, description } = req.body;
-
-    const checkpoint = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .first();
-
-    if (!checkpoint) {
-      return res.status(404).send({ message: "Checkpoint not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can update checkpoints" });
-    }
+    const userUuid = req.user.uuid;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).send({ message: "No fields to update" });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'No fields to update'
+      });
     }
 
-    const [updatedCheckpoint] = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .update(updateData)
-      .returning('*');
+    const updatedCheckpoint = await checkpointService.updateCheckpoint(
+      checkpointUuid,
+      updateData,
+      userUuid
+    );
 
-    res.status(200).send({ ...updatedCheckpoint, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error updating checkpoint" });
-  }
-});
+    res.status(HTTP_STATUS.OK).json({
+      ...updatedCheckpoint,
+      message: 'success'
+    });
+  })
+);
 
-// Delete a checkpoint (teacher only)
-router.delete('/:uuid', decodeToken, async (req, res) => {
-  try {
-    const userUuid = req.user.uuid;
+/**
+ * @route DELETE /checkpoints/:uuid
+ * @description Delete a checkpoint (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Checkpoint UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or checkpoint has progress
+ * @throws {AuthorizationError} 403 - Only teachers can delete checkpoints
+ * @throws {NotFoundError} 404 - Checkpoint not found
+ */
+router.delete(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const checkpointUuid = req.params.uuid;
-
-    const checkpoint = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .first();
-
-    if (!checkpoint) {
-      return res.status(404).send({ message: "Checkpoint not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can delete checkpoints" });
-    }
-
-    // Delete student_checkpoints first (foreign key constraint)
-    await pg.get()('student_checkpoints')
-      .where({ checkpoint_uuid: checkpointUuid })
-      .delete();
-
-    // Delete the checkpoint
-    await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .delete();
-
-    res.status(200).send({ message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error deleting checkpoint" });
-  }
-});
-
-// Update checkpoint order (teacher only)
-router.put('/:uuid/reorder', decodeToken, async (req, res) => {
-  if (!req.body || req.body.order_index === undefined) {
-    return res.status(402).send({ message: "order_index required" });
-  }
-
-  try {
     const userUuid = req.user.uuid;
+
+    await checkpointService.deleteCheckpoint(checkpointUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({ message: 'success' });
+  })
+);
+
+/**
+ * @route PUT /checkpoints/:uuid/reorder
+ * @description Update checkpoint order (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Checkpoint UUID
+ * @body {number} order_index - New order index
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or missing order_index
+ * @throws {AuthorizationError} 403 - Only teachers can reorder checkpoints
+ * @throws {NotFoundError} 404 - Checkpoint not found
+ */
+router.put(
+  '/:uuid/reorder',
+  decodeToken,
+  validateUUID('uuid'),
+  validateRequiredFields(['order_index']),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const checkpointUuid = req.params.uuid;
     const newOrderIndex = req.body.order_index;
-
-    const checkpoint = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .first();
-
-    if (!checkpoint) {
-      return res.status(404).send({ message: "Checkpoint not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can reorder checkpoints" });
-    }
-
-    // Check if any student has reached any checkpoint in this classroom
-    const reachedCheckpoints = await pg.get()('student_checkpoints')
-      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
-      .where({ 'checkpoints.classroom_uuid': checkpoint.classroom_uuid })
-      .first();
-
-    if (reachedCheckpoints) {
-      return res.status(403).send({ message: "Cannot reorder checkpoints after students have reached them" });
-    }
-
-    await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .update({ order_index: newOrderIndex });
-
-    res.status(200).send({ message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error reordering checkpoint" });
-  }
-});
-
-// Mark a checkpoint as reached for a student (teacher only)
-router.post('/:checkpoint_uuid/students/:student_uuid', decodeToken, async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    await checkpointService.reorderCheckpoint(checkpointUuid, newOrderIndex, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({ message: 'success' });
+  })
+);
+
+/**
+ * @route POST /checkpoints/:checkpoint_uuid/students/:student_uuid
+ * @description Mark a checkpoint as reached for a student (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} checkpoint_uuid - Checkpoint UUID
+ * @param {string} student_uuid - Student UUID
+ * @returns {Object} Created progress object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or already marked
+ * @throws {AuthorizationError} 403 - Only teachers can mark checkpoints
+ * @throws {NotFoundError} 404 - Checkpoint not found
+ */
+router.post(
+  '/:checkpoint_uuid/students/:student_uuid',
+  decodeToken,
+  validateUUID('checkpoint_uuid'),
+  validateUUID('student_uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const checkpointUuid = req.params.checkpoint_uuid;
     const studentUuid = req.params.student_uuid;
-
-    const checkpoint = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .first();
-
-    if (!checkpoint) {
-      return res.status(404).send({ message: "Checkpoint not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can mark checkpoints" });
-    }
-
-    // Check if student is member of classroom
-    const studentMembership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: studentUuid, role: 'student' })
-      .first();
-
-    if (!studentMembership) {
-      return res.status(400).send({ message: "Student is not a member of this classroom" });
-    }
-
-    // Check if already marked
-    const existing = await pg.get()('student_checkpoints')
-      .where({ checkpoint_uuid: checkpointUuid, student_uuid: studentUuid })
-      .first();
-
-    if (existing) {
-      return res.status(400).send({ message: "Checkpoint already reached" });
-    }
-
-    const [studentCheckpoint] = await pg.get()('student_checkpoints')
-      .insert({
-        checkpoint_uuid: checkpointUuid,
-        student_uuid: studentUuid
-      })
-      .returning('*');
-
-    res.status(200).send({ ...studentCheckpoint, message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error marking checkpoint" });
-  }
-});
-
-// Unmark a checkpoint for a student (teacher only)
-router.delete('/:checkpoint_uuid/students/:student_uuid', decodeToken, async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    const studentCheckpoint = await checkpointService.markCheckpointReached(
+      checkpointUuid,
+      studentUuid,
+      userUuid
+    );
+
+    res.status(HTTP_STATUS.CREATED).json({
+      ...studentCheckpoint,
+      message: 'success'
+    });
+  })
+);
+
+/**
+ * @route DELETE /checkpoints/:checkpoint_uuid/students/:student_uuid
+ * @description Unmark a checkpoint for a student (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} checkpoint_uuid - Checkpoint UUID
+ * @param {string} student_uuid - Student UUID
+ * @returns {Object} Success message
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can unmark checkpoints
+ * @throws {NotFoundError} 404 - Checkpoint not found
+ */
+router.delete(
+  '/:checkpoint_uuid/students/:student_uuid',
+  decodeToken,
+  validateUUID('checkpoint_uuid'),
+  validateUUID('student_uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const checkpointUuid = req.params.checkpoint_uuid;
     const studentUuid = req.params.student_uuid;
-
-    const checkpoint = await pg.get()('checkpoints')
-      .where({ uuid: checkpointUuid })
-      .first();
-
-    if (!checkpoint) {
-      return res.status(404).send({ message: "Checkpoint not found" });
-    }
-
-    // Check if user is teacher
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: checkpoint.classroom_uuid, user_uuid: userUuid, role: 'teacher' })
-      .first();
-
-    if (!membership) {
-      return res.status(403).send({ message: "Only teachers can unmark checkpoints" });
-    }
-
-    await pg.get()('student_checkpoints')
-      .where({ checkpoint_uuid: checkpointUuid, student_uuid: studentUuid })
-      .delete();
-
-    res.status(200).send({ message: "success" });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error unmarking checkpoint" });
-  }
-});
-
-// Get student's checkpoint progress
-router.get('/classroom/:classroom_uuid/student/:student_uuid/progress', decodeToken, async (req, res) => {
-  try {
     const userUuid = req.user.uuid;
+
+    await checkpointService.unmarkCheckpointReached(checkpointUuid, studentUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({ message: 'success' });
+  })
+);
+
+/**
+ * @route GET /checkpoints/classroom/:classroom_uuid/student/:student_uuid/progress
+ * @description Get student's checkpoint progress
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} classroom_uuid - Classroom UUID
+ * @param {string} student_uuid - Student UUID
+ * @returns {Object} Object with checkpoints array and next_checkpoint
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not authorized to view this progress
+ */
+router.get(
+  '/classroom/:classroom_uuid/student/:student_uuid/progress',
+  decodeToken,
+  validateUUID('classroom_uuid'),
+  validateUUID('student_uuid'),
+  asyncHandler(async (req, res) => {
+    const checkpointService = container.get('checkpointService');
     const classroomUuid = req.params.classroom_uuid;
     const studentUuid = req.params.student_uuid;
+    const userUuid = req.user.uuid;
 
-    // Check membership
-    const membership = await pg.get()('classroom_members')
-      .where({ classroom_uuid: classroomUuid, user_uuid: userUuid })
-      .first();
+    const checkpoints = await checkpointService.getStudentProgress(
+      classroomUuid,
+      studentUuid,
+      userUuid
+    );
 
-    if (!membership) {
-      return res.status(403).send({ message: "Not a member of this classroom" });
-    }
-
-    // Students can only view their own progress
-    if (membership.role === 'student' && studentUuid !== userUuid) {
-      return res.status(403).send({ message: "Students can only view their own progress" });
-    }
-
-    const checkpoints = await pg.get()('checkpoints')
-      .where({ classroom_uuid: classroomUuid })
-      .orderBy('order_index', 'asc');
-
-    const reachedCheckpoints = await pg.get()('student_checkpoints')
-      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
-      .where({
-        'checkpoints.classroom_uuid': classroomUuid,
-        'student_checkpoints.student_uuid': studentUuid
-      })
-      .select('student_checkpoints.*', 'checkpoints.name', 'checkpoints.description', 'checkpoints.order_index');
-
-    const reachedMap = {};
-    reachedCheckpoints.forEach(rc => {
-      reachedMap[rc.checkpoint_uuid] = rc.reached_at;
-    });
-
+    // Format progress data
     const progress = checkpoints.map(cp => ({
       ...cp,
-      reached: !!reachedMap[cp.uuid],
-      reached_at: reachedMap[cp.uuid] || null
+      reached: !!cp.reached_at,
+      reached_at: cp.reached_at || null
     }));
 
     // Find next checkpoint
     const nextCheckpoint = progress.find(cp => !cp.reached) || null;
 
-    res.status(200).send({ checkpoints: progress, next_checkpoint: nextCheckpoint });
-  } catch (e) {
-    console.log(e);
-    res.status(500).send({ message: "Error fetching progress" });
-  }
-});
+    res.status(HTTP_STATUS.OK).json({
+      checkpoints: progress,
+      next_checkpoint: nextCheckpoint
+    });
+  })
+);
 
-module.exports = router
+module.exports = router;

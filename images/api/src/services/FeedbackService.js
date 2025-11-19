@@ -585,7 +585,7 @@ class FeedbackService {
       uuid: uuidv4(),
       classroom_uuid,
       student_uuid,
-      created_by_uuid: userUuid,
+      teacher_uuid: userUuid,
       message,
       fulfilled: false
     });
@@ -625,7 +625,7 @@ class FeedbackService {
       uuid: uuidv4(),
       classroom_uuid: classroomUuid,
       student_uuid: student.user_uuid,
-      created_by_uuid: userUuid,
+      teacher_uuid: userUuid,
       message,
       fulfilled: false
     }));

@@ -78,13 +78,13 @@ class UserService {
    * @param {Object} userData - User registration data
    * @param {string} userData.email - User's email
    * @param {string} userData.password - User's password (plaintext)
-   * @param {string} userData.name - User's name
-   * @param {string} userData.role - User's role (student/teacher)
+   * @param {string} userData.first_name - User's first name
+   * @param {string} userData.last_name - User's last name
    * @returns {Promise<Object>} Object containing created user and token
    * @throws {Error} Registration error
    */
   async register(userData) {
-    const { email, password, name, role } = userData;
+    const { email, password, first_name, last_name } = userData;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findByEmail(email);
@@ -103,13 +103,13 @@ class UserService {
       uuid: uuidv4(),
       email,
       password: hashedPassword,
-      name,
-      role
+      first_name,
+      last_name
     });
 
     // Generate token
     const token = jwt.sign(
-      { uuid: newUser.uuid, email: newUser.email, role: newUser.role },
+      { uuid: newUser.uuid, email: newUser.email, first_name: newUser.first_name, last_name: newUser.last_name },
       this.config.jwtSecret,
       { expiresIn: '7d' }
     );
@@ -148,9 +148,11 @@ class UserService {
    * Update user profile
    * @param {string} uuid - User's UUID
    * @param {Object} updates - Profile updates
-   * @param {string} [updates.name] - Updated name
+   * @param {string} [updates.first_name] - Updated first name
+   * @param {string} [updates.last_name] - Updated last name
    * @param {string} [updates.email] - Updated email
-   * @returns {Promise<Object>} Updated user object without password
+   * @param {string} [updates.date_of_birth] - Updated date of birth
+   * @returns {Promise<Object>} Updated user object without password and token
    * @throws {Error} Update error
    */
   async updateProfile(uuid, updates) {
@@ -173,10 +175,20 @@ class UserService {
       throw error;
     }
 
+    // Generate new token with updated info
+    const token = jwt.sign(
+      { uuid: updatedUser.uuid, email: updatedUser.email, first_name: updatedUser.first_name, last_name: updatedUser.last_name },
+      this.config.jwtSecret,
+      { expiresIn: '7d' }
+    );
+
     // Don't return password
     const { password: _, ...userWithoutPassword } = updatedUser;
 
-    return userWithoutPassword;
+    return {
+      user: userWithoutPassword,
+      token
+    };
   }
 
   /**
@@ -215,11 +227,10 @@ class UserService {
   /**
    * Delete user account (soft delete with anonymization)
    * @param {string} uuid - User's UUID
-   * @param {string} password - User's password for confirmation
    * @returns {Promise<void>}
    * @throws {Error} Deletion error
    */
-  async deleteAccount(uuid, password) {
+  async deleteAccount(uuid) {
     const user = await this.userRepository.findByUuid(uuid);
 
     if (!user) {
@@ -228,12 +239,9 @@ class UserService {
       throw error;
     }
 
-    // Verify password
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      const error = new Error('Incorrect password');
-      error.statusCode = 401;
+    if (user.deleted_at) {
+      const error = new Error('User not found or already deleted');
+      error.statusCode = 404;
       throw error;
     }
 
@@ -265,7 +273,9 @@ class UserService {
       // Delete files from storage (outside transaction since it's filesystem operation)
       // We'll do this after transaction commits
       trx.afterCommit = async () => {
-        await this.fileStorageService.deleteFiles([...imagePaths, ...documentPaths]);
+        if (imagePaths.length > 0 || documentPaths.length > 0) {
+          await this.fileStorageService.deleteFiles([...imagePaths, ...documentPaths]);
+        }
       };
     });
   }

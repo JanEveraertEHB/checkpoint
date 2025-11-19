@@ -41,7 +41,7 @@ class CheckpointRepository {
    * @param {Object} checkpointData - Checkpoint data object
    * @param {string} checkpointData.uuid - Checkpoint's UUID
    * @param {string} checkpointData.classroom_uuid - Classroom's UUID
-   * @param {string} checkpointData.title - Checkpoint title
+   * @param {string} checkpointData.name - Checkpoint name
    * @param {string} checkpointData.description - Checkpoint description
    * @param {number} checkpointData.order_index - Order index for sorting
    * @returns {Promise<Object>} Created checkpoint object
@@ -59,7 +59,7 @@ class CheckpointRepository {
    * Update a checkpoint
    * @param {string} uuid - Checkpoint's UUID
    * @param {Object} updates - Fields to update
-   * @param {string} [updates.title] - Updated title
+   * @param {string} [updates.name] - Updated name
    * @param {string} [updates.description] - Updated description
    * @param {number} [updates.order_index] - Updated order index
    * @returns {Promise<Object>} Updated checkpoint object
@@ -116,7 +116,7 @@ class CheckpointRepository {
    * @throws {Error} Database query error
    */
   async getStudentProgress(checkpointUuid, studentUuid) {
-    return await this.db('checkpoint_progress')
+    return await this.db('student_checkpoints')
       .where({
         checkpoint_uuid: checkpointUuid,
         student_uuid: studentUuid
@@ -127,15 +127,13 @@ class CheckpointRepository {
   /**
    * Mark checkpoint as reached by student
    * @param {Object} progressData - Progress data object
-   * @param {string} progressData.uuid - Progress entry UUID
    * @param {string} progressData.checkpoint_uuid - Checkpoint's UUID
    * @param {string} progressData.student_uuid - Student's UUID
-   * @param {string} progressData.marked_by_uuid - Teacher's UUID who marked it
    * @returns {Promise<Object>} Created progress object
    * @throws {Error} Database insertion error
    */
   async markAsReached(progressData) {
-    const [progress] = await this.db('checkpoint_progress')
+    const [progress] = await this.db('student_checkpoints')
       .insert(progressData)
       .returning('*');
 
@@ -150,7 +148,7 @@ class CheckpointRepository {
    * @throws {Error} Database deletion error
    */
   async unmarkAsReached(checkpointUuid, studentUuid) {
-    return await this.db('checkpoint_progress')
+    return await this.db('student_checkpoints')
       .where({
         checkpoint_uuid: checkpointUuid,
         student_uuid: studentUuid
@@ -167,15 +165,14 @@ class CheckpointRepository {
    */
   async getStudentProgressByClassroom(classroomUuid, studentUuid) {
     return await this.db('checkpoints')
-      .leftJoin('checkpoint_progress', function() {
-        this.on('checkpoints.uuid', '=', 'checkpoint_progress.checkpoint_uuid')
-          .andOn('checkpoint_progress.student_uuid', '=', this.db.raw('?', [studentUuid]));
+      .leftJoin('student_checkpoints', function() {
+        this.on('checkpoints.uuid', '=', 'student_checkpoints.checkpoint_uuid')
+          .andOn('student_checkpoints.student_uuid', '=', this.db.raw('?', [studentUuid]));
       })
       .where('checkpoints.classroom_uuid', classroomUuid)
       .select(
         'checkpoints.*',
-        'checkpoint_progress.reached_at',
-        'checkpoint_progress.marked_by_uuid'
+        'student_checkpoints.reached_at'
       )
       .orderBy('checkpoints.order_index', 'asc');
   }
@@ -187,8 +184,8 @@ class CheckpointRepository {
    * @throws {Error} Database query error
    */
   async hasAnyProgress(classroomUuid) {
-    const count = await this.db('checkpoint_progress')
-      .join('checkpoints', 'checkpoint_progress.checkpoint_uuid', 'checkpoints.uuid')
+    const count = await this.db('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
       .where('checkpoints.classroom_uuid', classroomUuid)
       .count('* as count')
       .first();
@@ -203,10 +200,10 @@ class CheckpointRepository {
    * @throws {Error} Database query error
    */
   async getAllProgressByClassroom(classroomUuid) {
-    return await this.db('checkpoint_progress')
-      .join('checkpoints', 'checkpoint_progress.checkpoint_uuid', 'checkpoints.uuid')
+    return await this.db('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
       .where('checkpoints.classroom_uuid', classroomUuid)
-      .select('checkpoint_progress.*');
+      .select('student_checkpoints.*');
   }
 
   /**
@@ -231,7 +228,7 @@ class CheckpointRepository {
    * @throws {Error} Database deletion error
    */
   async deleteAllProgress(checkpointUuid) {
-    return await this.db('checkpoint_progress')
+    return await this.db('student_checkpoints')
       .where({ checkpoint_uuid: checkpointUuid })
       .del();
   }

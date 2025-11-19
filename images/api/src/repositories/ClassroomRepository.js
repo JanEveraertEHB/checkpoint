@@ -20,7 +20,13 @@ class ClassroomRepository {
    */
   async findByUuid(uuid) {
     return await this.db('classrooms')
-      .where({ uuid })
+      .join('users', 'classrooms.teacher_uuid', 'users.uuid')
+      .where('classrooms.uuid', uuid)
+      .select(
+        'classrooms.*',
+        'users.first_name as teacher_first_name',
+        'users.last_name as teacher_last_name'
+      )
       .first();
   }
 
@@ -43,16 +49,19 @@ class ClassroomRepository {
    * @throws {Error} Database query error
    */
   async findByUserMembership(userUuid) {
-    return await this.db('classrooms')
-      .join('classroom_members', 'classrooms.uuid', 'classroom_members.classroom_uuid')
+    return await this.db('classroom_members')
+      .join('classrooms', 'classroom_members.classroom_uuid', 'classrooms.uuid')
+      .join('users', 'classrooms.teacher_uuid', 'users.uuid')
       .where('classroom_members.user_uuid', userUuid)
       .select(
         'classrooms.*',
         'classroom_members.role',
         'classroom_members.active',
-        'classroom_members.joined_at'
+        'classroom_members.created_at as joined_at',
+        'users.first_name as teacher_first_name',
+        'users.last_name as teacher_last_name'
       )
-      .orderBy('classroom_members.joined_at', 'desc');
+      .orderBy('classroom_members.created_at', 'desc');
   }
 
   /**
@@ -135,10 +144,11 @@ class ClassroomRepository {
       .where('classroom_members.classroom_uuid', classroomUuid)
       .select(
         'classroom_members.*',
-        'users.name',
+        'users.first_name',
+        'users.last_name',
         'users.email'
       )
-      .orderBy('classroom_members.joined_at', 'asc');
+      .orderBy('classroom_members.created_at', 'asc');
   }
 
   /**

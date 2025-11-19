@@ -16,7 +16,7 @@ export default function StudentList({
   onRemoveStudent
 }: StudentListProps) {
   if (students.length === 0) {
-    return <p style={{ color: colors.textSecondary }}>No students yet. Share the invite code.</p>
+    return <p style={{ color: colors.textSecondary, padding: '50px' }}>No students yet. Share the invite code.</p>
   }
 
   // Sort: active students first, then inactive
@@ -29,7 +29,7 @@ export default function StudentList({
 
   return (
     <div style={{padding: '50px' }}>
-      <h2 style={{ marginBottom: '10px' }}>Your students</h2>
+      <h4 style={{ marginBottom: '10px' }}>Your students</h4>
       <ul style={{ listStyle: 'none'}}>
         {sortedStudents.map((student) => {
           const isActive = student.active !== false

@@ -33,11 +33,17 @@ class FeedbackRepository {
    */
   async findByStudentAndClassroom(classroomUuid, studentUuid) {
     const feedback = await this.db('feedback')
+      .join('users', 'feedback.created_by_uuid', 'users.uuid')
       .where({
-        classroom_uuid: classroomUuid,
-        student_uuid: studentUuid
+        'feedback.classroom_uuid': classroomUuid,
+        'feedback.student_uuid': studentUuid
       })
-      .orderBy('created_at', 'desc');
+      .select(
+        'feedback.*',
+        'users.first_name as created_by_first_name',
+        'users.last_name as created_by_last_name'
+      )
+      .orderBy('feedback.created_at', 'desc');
 
     // Load images and documents for each feedback
     for (const item of feedback) {
@@ -247,7 +253,9 @@ class FeedbackRepository {
       .where('feedback_requests.classroom_uuid', classroomUuid)
       .select(
         'feedback_requests.*',
-        'users.name as student_name'
+        'users.first_name as student_first_name',
+        'users.last_name as student_last_name',
+        'users.email as student_email'
       )
       .orderBy('feedback_requests.created_at', 'desc');
   }
@@ -352,10 +360,13 @@ class FeedbackRepository {
    */
   async findDemandsByStudent(studentUuid) {
     return await this.db('feedback_demands')
+      .join('users', 'feedback_demands.teacher_uuid', 'users.uuid')
       .join('classrooms', 'feedback_demands.classroom_uuid', 'classrooms.uuid')
       .where('feedback_demands.student_uuid', studentUuid)
       .select(
         'feedback_demands.*',
+        'users.first_name as teacher_first_name',
+        'users.last_name as teacher_last_name',
         'classrooms.name as classroom_name'
       )
       .orderBy('feedback_demands.created_at', 'desc');
@@ -391,7 +402,9 @@ class FeedbackRepository {
       .where('feedback_demands.classroom_uuid', classroomUuid)
       .select(
         'feedback_demands.*',
-        'users.name as student_name'
+        'users.first_name as student_first_name',
+        'users.last_name as student_last_name',
+        'users.email as student_email'
       )
       .orderBy('feedback_demands.created_at', 'desc');
   }
@@ -402,7 +415,7 @@ class FeedbackRepository {
    * @param {string} demandData.uuid - Demand's UUID
    * @param {string} demandData.classroom_uuid - Classroom's UUID
    * @param {string} demandData.student_uuid - Student's UUID
-   * @param {string} demandData.created_by_uuid - Teacher's UUID
+   * @param {string} demandData.teacher_uuid - Teacher's UUID
    * @param {string} demandData.message - Demand message
    * @returns {Promise<Object>} Created demand object
    * @throws {Error} Database insertion error
