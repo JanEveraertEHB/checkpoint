@@ -100,7 +100,6 @@ class ClassroomService {
 
     // Add creator as teacher
     await this.classroomRepository.addMember({
-      uuid: uuidv4(),
       classroom_uuid: classroom.uuid,
       user_uuid: creatorUuid,
       role: 'teacher',
@@ -108,6 +107,56 @@ class ClassroomService {
     });
 
     return classroom;
+  }
+
+  /**
+   * Update a classroom (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} [updates.name] - Updated classroom name
+   * @param {string} [updates.academic_year] - Updated academic year
+   * @param {string} [updates.allowed_email_domain] - Updated allowed email domain (null to remove)
+   * @param {string} userUuid - User's UUID
+   * @returns {Promise<Object>} Updated classroom object
+   * @throws {Error} Authorization or validation error
+   */
+  async updateClassroom(classroomUuid, updates, userUuid) {
+    // Only teachers can update classroom
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    const classroom = await this.classroomRepository.findByUuid(classroomUuid);
+
+    if (!classroom) {
+      const error = new Error('Classroom not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Check if classroom is completed
+    const isCompleted = await this.classroomRepository.isCompleted(classroomUuid);
+    if (isCompleted) {
+      const error = new Error('Cannot update a completed classroom');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Filter out undefined values and only allow specific fields
+    const allowedFields = ['name', 'academic_year', 'allowed_email_domain'];
+    const filteredUpdates = {};
+
+    for (const field of allowedFields) {
+      if (updates.hasOwnProperty(field)) {
+        filteredUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(filteredUpdates).length === 0) {
+      const error = new Error('No valid fields to update');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return await this.classroomRepository.update(classroomUuid, filteredUpdates);
   }
 
   /**
@@ -152,7 +201,7 @@ class ClassroomService {
     if (existingMembership) {
       // If inactive, reactivate
       if (!existingMembership.active) {
-        await this.classroomRepository.updateMembershipStatus(existingMembership.uuid, true);
+        await this.classroomRepository.updateMembershipStatus(classroom.uuid, userUuid, true);
         return classroom;
       }
 
@@ -163,7 +212,6 @@ class ClassroomService {
 
     // Add user as member
     await this.classroomRepository.addMember({
-      uuid: uuidv4(),
       classroom_uuid: classroom.uuid,
       user_uuid: userUuid,
       role: userRole,
@@ -239,7 +287,7 @@ class ClassroomService {
     }
 
     // Deactivate membership instead of deleting
-    await this.classroomRepository.updateMembershipStatus(membership.uuid, false);
+    await this.classroomRepository.updateMembershipStatus(classroomUuid, userUuid, false);
   }
 
   /**
@@ -264,7 +312,7 @@ class ClassroomService {
       throw error;
     }
 
-    await this.classroomRepository.updateMembershipStatus(membership.uuid, true);
+    await this.classroomRepository.updateMembershipStatus(classroomUuid, userUuid, true);
   }
 
   /**

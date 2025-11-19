@@ -17,12 +17,18 @@ export default function ClassroomHeader({ classroom, onDemandFeedbackFromAll, on
   return (
     <>
       <div style={{ display: 'flex', padding: '50px', flexDirection: "column", gap: "20px", justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-        <div>
+        <div style={{ width: '100%' }}>
           <h2 style={{ marginBottom: '10px' }}>{classroom.name}</h2>
           <p style={{ marginBottom: 0 }}>
             <strong>Academic Year:</strong> {classroom.academic_year}<br />
             <strong>Teacher:</strong> {classroom.teacher_first_name} {classroom.teacher_last_name}<br />
             <strong>Your Role:</strong> {classroom.role}
+            {classroom.allowed_email_domain && (
+              <>
+                <br />
+                <strong>Allowed Email Domain:</strong> @{classroom.allowed_email_domain}
+              </>
+            )}
           </p>
         </div>
         {isTeacher && !isCompleted && onDemandFeedbackFromAll && (

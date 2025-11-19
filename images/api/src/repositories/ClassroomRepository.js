@@ -84,6 +84,28 @@ class ClassroomRepository {
   }
 
   /**
+   * Update a classroom
+   * @param {string} uuid - Classroom's UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} [updates.name] - Updated classroom name
+   * @param {string} [updates.academic_year] - Updated academic year
+   * @param {string} [updates.allowed_email_domain] - Updated allowed email domain
+   * @returns {Promise<Object>} Updated classroom object
+   * @throws {Error} Database update error
+   */
+  async update(uuid, updates) {
+    const [classroom] = await this.db('classrooms')
+      .where({ uuid })
+      .update({
+        ...updates,
+        updated_at: this.db.fn.now()
+      })
+      .returning('*');
+
+    return classroom;
+  }
+
+  /**
    * Mark classroom as completed
    * @param {string} uuid - Classroom's UUID
    * @returns {Promise<Object>} Updated classroom object
@@ -170,7 +192,6 @@ class ClassroomRepository {
   /**
    * Add a member to a classroom
    * @param {Object} membershipData - Membership data object
-   * @param {string} membershipData.uuid - Membership UUID
    * @param {string} membershipData.classroom_uuid - Classroom's UUID
    * @param {string} membershipData.user_uuid - User's UUID
    * @param {string} membershipData.role - Role (teacher/student)
@@ -188,14 +209,18 @@ class ClassroomRepository {
 
   /**
    * Update membership active status
-   * @param {string} membershipUuid - Membership UUID
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID
    * @param {boolean} active - New active status
    * @returns {Promise<Object>} Updated membership object
    * @throws {Error} Database update error
    */
-  async updateMembershipStatus(membershipUuid, active) {
+  async updateMembershipStatus(classroomUuid, userUuid, active) {
     const [membership] = await this.db('classroom_members')
-      .where({ uuid: membershipUuid })
+      .where({
+        classroom_uuid: classroomUuid,
+        user_uuid: userUuid
+      })
       .update({ active })
       .returning('*');
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Button, Alert, Timeline, Tabs } from '../common'
 import { CheckpointTable, CheckpointForm, CheckpointProgress } from '../checkpoint'
@@ -50,6 +50,7 @@ interface TeacherViewProps {
   timelineItems: Array<{ type: 'feedback' | 'checkpoint'; date: string; data: Feedback | Checkpoint }>
   onCompleteClassroom: () => void
   onDemandFeedback: (studentUuid: string) => void
+  onUpdateClassroom: (updates: { name?: string; academic_year?: string; allowed_email_domain?: string | null }) => Promise<void>
 }
 
 export default function TeacherView({
@@ -92,13 +93,27 @@ export default function TeacherView({
   canAddDocuments,
   timelineItems,
   onCompleteClassroom,
-  onDemandFeedback
+  onDemandFeedback,
+  onUpdateClassroom
 }: TeacherViewProps) {
   const [activeTab, setActiveTab] = useState('feedback')
   const [showAddCheckpoint, setShowAddCheckpoint] = useState(false)
   const [newCheckpointName, setNewCheckpointName] = useState('')
   const [newCheckpointDescription, setNewCheckpointDescription] = useState('')
+  const [classroomName, setClassroomName] = useState(classroom.name)
+  const [academicYear, setAcademicYear] = useState(classroom.academic_year)
+  const [allowedEmailDomain, setAllowedEmailDomain] = useState(classroom.allowed_email_domain || '')
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsError, setSettingsError] = useState<string | null>(null)
+  const [settingsSuccess, setSettingsSuccess] = useState(false)
   const isCompleted = classroom.completed === true
+
+  // Update form fields when classroom data changes
+  useEffect(() => {
+    setClassroomName(classroom.name)
+    setAcademicYear(classroom.academic_year)
+    setAllowedEmailDomain(classroom.allowed_email_domain || '')
+  }, [classroom.name, classroom.academic_year, classroom.allowed_email_domain])
 
   const handleAddCheckpoint = async (e: FormEvent) => {
     e.preventDefault()
@@ -107,6 +122,42 @@ export default function TeacherView({
     setNewCheckpointName('')
     setNewCheckpointDescription('')
     setShowAddCheckpoint(false)
+  }
+
+  const handleSaveClassroomSettings = async (e: FormEvent) => {
+    e.preventDefault()
+    setSavingSettings(true)
+    setSettingsError(null)
+    setSettingsSuccess(false)
+
+    try {
+      const updates: { name?: string; academic_year?: string; allowed_email_domain?: string | null } = {}
+
+      // Only include changed fields
+      if (classroomName !== classroom.name) {
+        updates.name = classroomName
+      }
+      if (academicYear !== classroom.academic_year) {
+        updates.academic_year = academicYear
+      }
+      if (allowedEmailDomain !== (classroom.allowed_email_domain || '')) {
+        updates.allowed_email_domain = allowedEmailDomain || null
+      }
+
+      if (Object.keys(updates).length === 0) {
+        setSettingsError('No changes detected')
+        setSavingSettings(false)
+        return
+      }
+
+      await onUpdateClassroom(updates)
+      setSettingsSuccess(true)
+      setTimeout(() => setSettingsSuccess(false), 3000)
+    } catch (err: any) {
+      setSettingsError(err.response?.data?.message || 'Failed to update classroom settings')
+    } finally {
+      setSavingSettings(false)
+    }
   }
 
   const handleAddFeedback = async (e: FormEvent) => {
@@ -215,6 +266,83 @@ export default function TeacherView({
   const settingsTab = (
     <>
       <h4>Classroom Settings</h4>
+
+      {!isCompleted && (
+        <div style={{ marginBottom: spacing.lg }}>
+          <h5>Classroom Information</h5>
+          <form onSubmit={handleSaveClassroomSettings}>
+            <div style={{ marginBottom: spacing.md }}>
+              <label htmlFor="classroom-name">
+                <strong>Classroom Name</strong>
+              </label>
+              <input
+                id="classroom-name"
+                type="text"
+                className="u-full-width"
+                value={classroomName}
+                onChange={(e) => setClassroomName(e.target.value)}
+                required
+                maxLength={200}
+              />
+            </div>
+
+            <div style={{ marginBottom: spacing.md }}>
+              <label htmlFor="academic-year">
+                <strong>Academic Year</strong>
+              </label>
+              <input
+                id="academic-year"
+                type="text"
+                className="u-full-width"
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                required
+                maxLength={200}
+                placeholder="e.g., 2024-2025"
+              />
+            </div>
+
+            <div style={{ marginBottom: spacing.md }}>
+              <label htmlFor="allowed-email-domain">
+                <strong>Allowed Email Domain (optional)</strong>
+                <small style={{ display: 'block', color: '#666', marginTop: '5px' }}>
+                  Only users with email addresses from this domain can join. Leave empty to allow all domains.
+                </small>
+              </label>
+              <input
+                id="allowed-email-domain"
+                type="text"
+                className="u-full-width"
+                value={allowedEmailDomain}
+                onChange={(e) => setAllowedEmailDomain(e.target.value)}
+                maxLength={200}
+                placeholder="e.g., university.edu"
+              />
+              {allowedEmailDomain && (
+                <small style={{ color: '#666' }}>
+                  Only emails ending with @{allowedEmailDomain} will be allowed to join.
+                </small>
+              )}
+            </div>
+
+            {settingsError && (
+              <Alert variant="error" message={settingsError} />
+            )}
+
+            {settingsSuccess && (
+              <Alert variant="success" message="Classroom settings updated successfully!" />
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={savingSettings}
+            >
+              {savingSettings ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </div>
+      )}
 
       <div style={{ marginBottom: spacing.lg }}>
         <h5>Invite Students</h5>

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useClassroom, useCheckpoints, useFeedback, useTimeline } from '../hooks'
 import { Loading } from '../components/common'
 import { ClassroomHeader, TeacherView, StudentView, StudentList } from '../components/classroom'
-import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom, createFeedbackRequest, createFeedbackDemand, createClassroomWideFeedbackDemand } from '../services/api'
+import { removeStudentFromClassroom, leaveClassroom, rejoinClassroom, completeClassroom, createFeedbackRequest, createFeedbackDemand, createClassroomWideFeedbackDemand, updateClassroom } from '../services/api'
 import type { Student } from '../types'
 
 export default function ClassroomDetail() {
@@ -287,6 +287,12 @@ export default function ClassroomDetail() {
     }
   }
 
+  // Handle updating classroom settings (teacher only)
+  const handleUpdateClassroom = async (updates: { name?: string; academic_year?: string; allowed_email_domain?: string | null }) => {
+    await updateClassroom(uuid!, updates)
+    await refreshClassroom()
+  }
+
   if (loading) {
     return <Loading />
   }
@@ -368,6 +374,7 @@ export default function ClassroomDetail() {
               timelineItems={timelineItems}
               onCompleteClassroom={handleCompleteClassroom}
               onDemandFeedback={handleDemandFeedback}
+              onUpdateClassroom={handleUpdateClassroom}
             />
           ) : (
             <StudentView

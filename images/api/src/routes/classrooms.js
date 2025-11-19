@@ -119,6 +119,55 @@ router.post(
 );
 
 /**
+ * @route PUT /classrooms/:uuid
+ * @description Update a classroom (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @body {string} [name] - Updated classroom name
+ * @body {string} [academic_year] - Updated academic year
+ * @body {string} [allowed_email_domain] - Updated allowed email domain (null or empty string to remove restriction)
+ * @returns {Object} Updated classroom object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format or no valid fields to update
+ * @throws {AuthorizationError} 403 - Only teachers can update classrooms
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.put(
+  '/:uuid',
+  decodeToken,
+  validateUUID('uuid'),
+  sanitizeText(['name', 'academic_year', 'allowed_email_domain'], 200),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+    const { name, academic_year, allowed_email_domain } = req.body;
+
+    // Build updates object (only include fields that are present)
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (academic_year !== undefined) updates.academic_year = academic_year;
+    if (allowed_email_domain !== undefined) {
+      // Allow null or empty string to remove email domain restriction
+      updates.allowed_email_domain = allowed_email_domain || null;
+    }
+
+    const updatedClassroom = await classroomService.updateClassroom(
+      classroomUuid,
+      updates,
+      userUuid
+    );
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...updatedClassroom,
+      message: 'Classroom updated successfully'
+    });
+  })
+);
+
+/**
  * @route POST /classrooms/join/:invite_code
  * @description Join a classroom using an invite code
  * @access Protected
