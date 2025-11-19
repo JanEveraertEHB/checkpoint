@@ -508,13 +508,12 @@ class FeedbackRepository {
     const images = await dbContext('feedback_images')
       .join('feedback', 'feedback_images.feedback_uuid', 'feedback.uuid')
       .where('feedback.student_uuid', studentUuid)
-      .select('feedback_images.uuid', 'feedback_images.file_path');
-
+      .select('feedback_images.uuid', 'feedback_images.filename')
+    const formed = images.map((e) => e.uuid)
     await dbContext('feedback_images')
-      .join('feedback', 'feedback_images.feedback_uuid', 'feedback.uuid')
-      .where('feedback.student_uuid', studentUuid)
-      .delete();
-
+      .whereIn('uuid', formed)
+      .delete()
+    
     return images;
   }
 
@@ -532,12 +531,12 @@ class FeedbackRepository {
     const documents = await dbContext('feedback_documents')
       .join('feedback', 'feedback_documents.feedback_uuid', 'feedback.uuid')
       .where('feedback.student_uuid', studentUuid)
-      .select('feedback_documents.uuid', 'feedback_documents.file_path');
-
+      .select('feedback_documents.uuid', 'feedback_documents.filename');
+    const formed = documents.map((e) => e.uuid)
     await dbContext('feedback_documents')
-      .join('feedback', 'feedback_documents.feedback_uuid', 'feedback.uuid')
-      .where('feedback.student_uuid', studentUuid)
-      .delete();
+      .whereIn('uuid', formed)
+      .delete()
+    
 
     return documents;
   }

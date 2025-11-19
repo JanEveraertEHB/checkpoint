@@ -8,7 +8,6 @@ export default function Register() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [userType, setUserType] = useState<'student' | 'teacher'>('student')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
@@ -20,19 +19,9 @@ export default function Register() {
     setLoading(true)
 
     try {
-      await register(firstName, lastName, email, password, userType)
+      await register(firstName, lastName, email, password, 'teacher')
 
-      // Redirect based on user type
-      if (userType === 'student') {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        if (isLocalhost) {
-          window.location.href = 'http://localhost:5174/home'
-        } else {
-          window.location.href = 'https://student.checkpoint.academy/home'
-        }
-      } else {
-        navigate('/home')
-      }
+      navigate('/home')
     } catch (err: any) {
       // Check if the error response contains a message about duplicate email
       if (err.response?.data?.message === 'Email already in use') {
@@ -49,7 +38,7 @@ export default function Register() {
     <div className="container">
       <div className="row">
         <div className="six columns offset-by-three">
-          <h2>Register</h2>
+          <h2>Register as teacher</h2>
           {error && <p style={{ color: 'red' }}>{error}</p>}
           <form onSubmit={handleSubmit}>
             <div className="row">
@@ -75,32 +64,6 @@ export default function Register() {
                   required
                 />
               </div>
-            </div>
-
-            <label>I am a:</label>
-            <div>
-              <label>
-                <input
-                  type="radio"
-                  name="userType"
-                  value="student"
-                  checked={userType === 'student'}
-                  onChange={(e) => setUserType(e.target.value as 'student' | 'teacher')}
-                />
-                <span className="label-body">Student</span>
-              </label>
-            </div>
-            <div>
-              <label>
-                <input
-                  type="radio"
-                  name="userType"
-                  value="teacher"
-                  checked={userType === 'teacher'}
-                  onChange={(e) => setUserType(e.target.value as 'student' | 'teacher')}
-                />
-                <span className="label-body">Teacher</span>
-              </label>
             </div>
 
             <label htmlFor="email">Email</label>

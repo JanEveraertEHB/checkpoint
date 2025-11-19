@@ -1,0 +1,51 @@
+
+    :root{
+      --bg1:#0f172a;
+      --bg2:#0b1220;
+      --accent:#2dd4bf;
+      --accent-2:#60a5fa;
+      --glass: rgba(255,255,255,0.06);
+      --card: rgba(255,255,255,0.04);
+    }
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background: radial-gradient(800px 400px at 10% 10%, rgba(96,165,250,0.08), transparent), linear-gradient(120deg,var(--bg1),var(--bg2)); color:#e6eef8; -webkit-font-smoothing:antialiased}
+
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px}
+    .card{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr 420px;gap:32px;align-items:center}
+
+    /* left panel */
+    .hero{padding:40px;border-radius:20px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));box-shadow:0 10px 30px rgba(2,6,23,0.6);backdrop-filter: blur(6px)}
+    .logo{width:84px;height:84px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;padding:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .logo img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(15,23,42,0.6));transform-origin:center;animation:logoPop 650ms cubic-bezier(.2,.9,.2,1) both}
+    @keyframes logoPop{0%{transform:scale(.6) rotate(-10deg);opacity:0}60%{transform:scale(1.06) rotate(4deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+
+    h1{font-size:38px;line-height:1.02;margin:18px 0 12px}
+    p.lead{font-size:16px;color:rgba(230,238,248,0.85);margin:0 0 22px;max-width:62ch}
+
+    .cta{display:flex;gap:12px;align-items:center}
+    .btn{padding:12px 20px;border-radius:14px;border:0;font-weight:600;cursor:pointer;box-shadow:0 8px 30px rgba(2,6,23,0.5);transition:transform .16s ease,box-shadow .16s ease}
+    .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#04263a}
+    .btn-ghost{background:transparent;color:#cfe9ff;border:1px solid rgba(255,255,255,0.06)}
+    .btn:hover{transform:translateY(-4px)}
+
+    /* right panel */
+    .panel{padding:28px;border-radius:16px;background:linear-gradient(180deg,var(--card),var(--glass));box-shadow:inset 0 1px 0 rgba(255,255,255,0.02),0 8px 30px rgba(2,6,23,0.5)}
+    .panel h3{margin:0 0 12px;font-size:18px}
+
+    .milestones{display:flex;flex-direction:column;gap:12px}
+    .milestone{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border:1px solid rgba(255,255,255,0.02)}
+    .m-step{min-width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;font-weight:700}
+    .m-body{flex:1}
+    .m-title{font-weight:700;margin:0 0 4px}
+    .m-sub{font-size:13px;color:rgba(230,238,248,0.7);margin:0}
+
+    /* decorative floating shapes */
+    .orb{position:absolute;filter:blur(40px);opacity:.45;mix-blend-mode:screen;border-radius:999px}
+    .orb.a{width:360px;height:360px;left:-60px;top:10vh;background:linear-gradient(180deg,var(--accent),transparent)}
+    .orb.b{width:260px;height:260px;right:-60px;bottom:8vh;background:linear-gradient(180deg,var(--accent-2),transparent)}
+
+    /* responsive */
+    @media (max-width:980px){
+      .card{grid-template-columns:1fr;}
+      .wrap{padding:28px}
+    }
