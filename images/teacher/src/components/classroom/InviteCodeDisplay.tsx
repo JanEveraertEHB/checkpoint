@@ -9,7 +9,7 @@ interface InviteCodeDisplayProps {
 export default function InviteCodeDisplay({ code }: InviteCodeDisplayProps) {
   const [copied, setCopied] = useState<'code' | 'link' | null>(null)
 
-  const inviteLink = `${window.location.origin}/join/${code}`
+  const inviteLink = `https://checkpoint.academy/join/${code}`
 
   const copyToClipboard = (text: string, type: 'code' | 'link') => {
     navigator.clipboard.writeText(text).then(() => {
