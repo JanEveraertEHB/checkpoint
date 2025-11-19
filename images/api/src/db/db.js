@@ -9,10 +9,7 @@ class DB {
   constructor() {
     if (DB.instance) return DB.instance
 
-    this.pg = pg({
-      client: 'pg',
-      connection: process.env.DATABASE_URL
-    })
+    this.pg = pg
 
     DB.instance = this
   }

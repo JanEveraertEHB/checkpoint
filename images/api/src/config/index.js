@@ -40,14 +40,14 @@ const config = {
 
   // Email Configuration
   email: {
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '465', 10),
-    secure: process.env.EMAIL_SECURE === 'true' || true,
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    secure: process.env.SMTP_SECURE === 'true' || true,
     auth: {
-      user: process.env.EMAIL_USER || '',
-      pass: process.env.EMAIL_PASSWORD || ''
+      user: process.env.SMTP_USER || '',
+      pass: process.env.SMTP_PASSWORD || ''
     },
-    from: process.env.EMAIL_FROM || 'noreply@checkpoint.com',
+    from: process.env.SMTP_FROM || 'noreply@checkpoint.com',
     contactRecipient: process.env.CONTACT_EMAIL || 'jan@tastbaar.studio'
   },
 
@@ -85,8 +85,8 @@ function validateConfig() {
     if (!process.env.DATABASE_URL) {
       required.push('DATABASE_URL');
     }
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      required.push('EMAIL_USER and EMAIL_PASSWORD');
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      required.push('SMTP_USER and SMTP_PASSWORD');
     }
   }
 
