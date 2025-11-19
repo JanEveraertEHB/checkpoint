@@ -67,6 +67,7 @@ services:
       SMTP_PASS: ${SMTP_PASS}
     volumes:
       - ./_volumes/uploads:/usr/app/uploads
+    command: npm run prod
     depends_on:
       db:
         condition: service_healthy
