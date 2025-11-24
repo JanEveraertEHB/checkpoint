@@ -6,12 +6,7 @@ const path = require('path');
 
 const { Server } = require('socket.io');
 
-const jwt = require('jsonwebtoken');
 const cors = require("cors")
-
-const { checkBodyFields } =require("./helpers/bodyHelpers");
-const { uuidv4 } =require("./helpers/uuidHelpers");
-const pg = require('./db/db.js')
 
 const user_routes = require('./routes/users')
 const classroom_routes = require('./routes/classrooms')
