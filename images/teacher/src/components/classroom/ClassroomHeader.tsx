@@ -1,4 +1,5 @@
 import { Button } from '../common'
+import { Link } from 'react-router-dom'
 import type { Classroom } from '../../types'
 
 interface ClassroomHeaderProps {
@@ -24,11 +25,18 @@ export default function ClassroomHeader({ classroom, onDemandFeedbackFromAll }: 
             )}
           </p>
         </div>
-        {!isCompleted && (
-          <Button variant="primary" onClick={onDemandFeedbackFromAll}>
-            Demand Feedback from All Students
-          </Button>
-        )}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {!isCompleted && (
+            <Button variant="primary" onClick={onDemandFeedbackFromAll}>
+              Demand Feedback from All Students
+            </Button>
+          )}
+          {classroom.role === 'teacher' && (
+            <Link to={`/classroom/${classroom.uuid}/metrics`} className="button">
+              View Metrics
+            </Link>
+          )}
+        </div>
       </div>
     </>
   )

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Home from './pages/Home'
 import ClassroomDetail from './pages/ClassroomDetail'
+import Metrics from './pages/Metrics'
 import JoinClassroom from './pages/JoinClassroom'
 import Profile from './pages/Profile'
 import Contact from './pages/Contact'
@@ -88,6 +89,14 @@ function AppRoutes() {
                 <div className="fullscreenContainer">
                   <ClassroomDetail />
                 </div>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/classroom/:uuid/metrics"
+            element={
+              <PrivateRoute>
+                <Metrics />
               </PrivateRoute>
             }
           />

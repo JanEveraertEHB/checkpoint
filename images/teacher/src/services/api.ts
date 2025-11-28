@@ -213,4 +213,34 @@ export const updateNote = (note_uuid: string, content: string) =>
 export const deleteNote = (note_uuid: string) =>
   api.delete(`/notes/${note_uuid}`)
 
+// Metrics APIs
+export const getClassroomMetrics = (classroom_uuid: string) =>
+  api.get<{
+    total_students: number
+    active_students: number
+    checkpoint_achievements: {
+      checkpoint_name: string
+      achieved_count: number
+      total_count: number
+    }[]
+    overall_participation: number
+  }>(`/classrooms/${classroom_uuid}/metrics`)
+
+export const getStudentEngagementMetrics = (classroom_uuid: string) =>
+  api.get<{
+    success: boolean
+    students: {
+      student_uuid: string
+      first_name: string
+      last_name: string
+      email: string
+      is_engaged: boolean
+      current_checkpoint: string
+      current_checkpoint_order: number
+      reactivity_score: number
+      dedication_score: number
+      engagement_score: number
+    }[]
+  }>(`/classrooms/${classroom_uuid}/metrics/engagement`)
+
 export default api

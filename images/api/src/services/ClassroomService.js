@@ -514,6 +514,117 @@ class ClassroomService {
 
     await this.pendingMemberRepository.remove(classroomUuid, email);
   }
+
+  /**
+   * Get basic classroom metrics
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Object>} Basic metrics object
+   * @throws {Error} Authorization error
+   */
+  async getBasicMetrics(classroomUuid, userUuid) {
+    // User must be a member
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getBasicMetrics(classroomUuid);
+  }
+
+  /**
+   * Get progress metrics for a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Object>} Progress metrics object
+   * @throws {Error} Authorization error
+   */
+  async getProgressMetrics(classroomUuid, userUuid) {
+    // User must be a member
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getProgressMetrics(classroomUuid);
+  }
+
+  
+
+  /**
+   * Get comprehensive classroom metrics
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Object>} Comprehensive metrics object
+   * @throws {Error} Authorization error
+   */
+  async getClassroomMetrics(classroomUuid, userUuid) {
+    // User must be a member
+    await this.authorizationService.requireMember(classroomUuid, userUuid);
+
+    const [basicMetrics, progressMetrics, studentEngagementMetrics, checkpointDistribution] = await Promise.all([
+      this.classroomRepository.getBasicMetrics(classroomUuid),
+      this.classroomRepository.getProgressMetrics(classroomUuid),
+      this.classroomRepository.getStudentEngagementMetrics(classroomUuid),
+      this.classroomRepository.getCheckpointCompletionDistribution(classroomUuid)
+    ]);
+
+    // Transform checkpoint distribution to match frontend expectations
+    const checkpointAchievements = checkpointDistribution.map(checkpoint => ({
+      checkpoint_name: checkpoint.name,
+      achieved_count: checkpoint.students_reached,
+      total_count: checkpoint.total_students
+    }));
+
+    // Calculate overall participation based on student engagement metrics
+    const engagedStudents = studentEngagementMetrics.filter(s => s.is_engaged).length;
+    const overallParticipation = basicMetrics.active_students > 0 
+      ? Math.round((engagedStudents / basicMetrics.active_students) * 100)
+      : 0;
+
+    return {
+      total_students: basicMetrics.total_students,
+      active_students: basicMetrics.active_students,
+      checkpoint_achievements: checkpointAchievements,
+      overall_participation: overallParticipation
+    };
+  }
+
+  /**
+   * Get student progress summary (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Array<Object>>} Array of student progress objects
+   * @throws {Error} Authorization error
+   */
+  async getStudentProgressSummary(classroomUuid, userUuid) {
+    // Only teachers can see detailed student progress
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getStudentProgressSummary(classroomUuid);
+  }
+
+  /**
+   * Get checkpoint completion distribution (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Array<Object>>} Array of checkpoint completion objects
+   * @throws {Error} Authorization error
+   */
+  async getCheckpointCompletionDistribution(classroomUuid, userUuid) {
+    // Only teachers can see detailed completion distribution
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getCheckpointCompletionDistribution(classroomUuid);
+  }
+
+  /**
+   * Get detailed student engagement metrics (teacher only)
+   * @param {string} classroomUuid - Classroom's UUID
+   * @param {string} userUuid - User's UUID (for authorization)
+   * @returns {Promise<Array<Object>>} Array of student engagement objects
+   * @throws {Error} Authorization error
+   */
+  async getStudentEngagementMetrics(classroomUuid, userUuid) {
+    // Only teachers can see detailed student engagement metrics
+    await this.authorizationService.requireTeacher(classroomUuid, userUuid);
+
+    return await this.classroomRepository.getStudentEngagementMetrics(classroomUuid);
+  }
 }
 
 module.exports = ClassroomService;

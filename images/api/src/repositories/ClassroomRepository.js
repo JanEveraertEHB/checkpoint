@@ -329,6 +329,335 @@ class ClassroomRepository {
       .where({ user_uuid: userUuid })
       .update({ active: false });
   }
+
+  /**
+   * Get basic classroom metrics
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<Object>} Basic metrics object
+   * @throws {Error} Database query error
+   */
+  async getBasicMetrics(classroomUuid) {
+    const totalMembers = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid })
+      .count('* as count')
+      .first();
+
+    const activeMembers = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, active: true })
+      .count('* as count')
+      .first();
+
+    const students = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, role: 'student' })
+      .count('* as count')
+      .first();
+
+    const activeStudents = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, role: 'student', active: true })
+      .count('* as count')
+      .first();
+
+    const checkpoints = await this.db('checkpoints')
+      .where({ classroom_uuid: classroomUuid })
+      .count('* as count')
+      .first();
+
+    return {
+      total_members: parseInt(totalMembers.count),
+      active_members: parseInt(activeMembers.count),
+      total_students: parseInt(students.count),
+      active_students: parseInt(activeStudents.count),
+      total_checkpoints: parseInt(checkpoints.count)
+    };
+  }
+
+  /**
+   * Get progress metrics for a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<Object>} Progress metrics object
+   * @throws {Error} Database query error
+   */
+  async getProgressMetrics(classroomUuid) {
+    // Get total checkpoints and students
+    const totalCheckpoints = await this.db('checkpoints')
+      .where({ classroom_uuid: classroomUuid })
+      .count('* as count')
+      .first();
+
+    const totalStudents = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, role: 'student', active: true })
+      .count('* as count')
+      .first();
+
+    if (parseInt(totalCheckpoints.count) === 0 || parseInt(totalStudents.count) === 0) {
+      return {
+        total_checkpoints: parseInt(totalCheckpoints.count),
+        total_students: parseInt(totalStudents.count),
+        average_completion_rate: 0,
+        students_no_progress: 0,
+        students_completed_all: 0,
+        total_progress_entries: 0
+      };
+    }
+
+    // Get progress completion rates per student
+    const studentProgress = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, role: 'student', active: true })
+      .select('classroom_members.user_uuid');
+
+    // Get completion counts for each student
+    const completionCounts = await this.db('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
+      .where('checkpoints.classroom_uuid', classroomUuid)
+      .select(
+        'student_checkpoints.student_uuid',
+        this.db.raw('COUNT(*) as completed_checkpoints')
+      )
+      .groupBy('student_checkpoints.student_uuid');
+
+    // Calculate metrics
+    const totalProgressEntries = await this.db('student_checkpoints')
+      .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
+      .where('checkpoints.classroom_uuid', classroomUuid)
+      .count('* as count')
+      .first();
+
+    const studentsWithProgress = new Set(completionCounts.map(c => c.student_uuid));
+    const studentsNoProgress = parseInt(totalStudents.count) - studentsWithProgress.size;
+
+    const studentsCompletedAll = completionCounts
+      .filter(c => parseInt(c.completed_checkpoints) === parseInt(totalCheckpoints.count))
+      .length;
+
+    const averageCompletionRate = completionCounts.length > 0
+      ? completionCounts.reduce((sum, c) => sum + (parseInt(c.completed_checkpoints) / parseInt(totalCheckpoints.count)), 0) / completionCounts.length
+      : 0;
+
+    return {
+      total_checkpoints: parseInt(totalCheckpoints.count),
+      total_students: parseInt(totalStudents.count),
+      average_completion_rate: Math.round(averageCompletionRate * 100) / 100,
+      students_no_progress: studentsNoProgress,
+      students_completed_all: studentsCompletedAll,
+      total_progress_entries: parseInt(totalProgressEntries.count)
+    };
+  }
+
+  
+
+  /**
+   * Get student progress summary for all students in a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<Array<Object>>} Array of student progress objects
+   * @throws {Error} Database query error
+   */
+  async getStudentProgressSummary(classroomUuid) {
+    const totalCheckpoints = await this.db('checkpoints')
+      .where({ classroom_uuid: classroomUuid })
+      .count('* as count')
+      .first();
+
+    return await this.db('classroom_members')
+      .leftJoin('users', 'classroom_members.user_uuid', 'users.uuid')
+      .leftJoin(
+        this.db.raw('(SELECT student_uuid, COUNT(*) as completed_checkpoints FROM student_checkpoints JOIN checkpoints ON student_checkpoints.checkpoint_uuid = checkpoints.uuid WHERE checkpoints.classroom_uuid = ? GROUP BY student_uuid) as progress', [classroomUuid]),
+        'classroom_members.user_uuid',
+        'progress.student_uuid'
+      )
+      .where({
+        'classroom_members.classroom_uuid': classroomUuid,
+        'classroom_members.role': 'student',
+        'classroom_members.active': true
+      })
+      .select(
+        'classroom_members.user_uuid',
+        'users.first_name',
+        'users.last_name',
+        'users.email',
+        this.db.raw('COALESCE(progress.completed_checkpoints, 0) as completed_checkpoints'),
+        this.db.raw('CASE WHEN COALESCE(progress.completed_checkpoints, 0) = 0 THEN 0 ELSE ROUND((COALESCE(progress.completed_checkpoints, 0) * 100.0 / ?), 2) END as completion_percentage', [parseInt(totalCheckpoints.count)])
+      )
+      .orderBy('users.last_name', 'asc')
+      .orderBy('users.first_name', 'asc');
+  }
+
+  /**
+   * Get checkpoint completion distribution
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<Array<Object>>} Array of checkpoint completion objects
+   * @throws {Error} Database query error
+   */
+  async getCheckpointCompletionDistribution(classroomUuid) {
+    const activeStudents = await this.db('classroom_members')
+      .where({ classroom_uuid: classroomUuid, role: 'student', active: true })
+      .count('* as count')
+      .first();
+
+    const totalStudents = parseInt(activeStudents.count);
+
+    return await this.db('checkpoints')
+      .leftJoin('student_checkpoints', 'checkpoints.uuid', 'student_checkpoints.checkpoint_uuid')
+      .where('checkpoints.classroom_uuid', classroomUuid)
+      .select(
+        'checkpoints.uuid',
+        'checkpoints.name',
+        'checkpoints.order_index',
+        this.db.raw('COUNT(DISTINCT student_checkpoints.student_uuid) as students_reached'),
+        this.db.raw('? as total_students', [totalStudents])
+      )
+      .groupBy('checkpoints.uuid', 'checkpoints.name', 'checkpoints.order_index')
+      .orderBy('checkpoints.order_index', 'asc');
+  }
+
+  /**
+   * Get detailed student engagement metrics for a classroom
+   * @param {string} classroomUuid - Classroom's UUID
+   * @returns {Promise<Array<Object>>} Array of student engagement objects
+   * @throws {Error} Database query error
+   */
+  async getStudentEngagementMetrics(classroomUuid) {
+    // Get all active students with their basic info
+    const students = await this.db('classroom_members')
+      .join('users', 'classroom_members.user_uuid', 'users.uuid')
+      .where({
+        'classroom_members.classroom_uuid': classroomUuid,
+        'classroom_members.role': 'student',
+        'classroom_members.active': true
+      })
+      .select(
+        'classroom_members.user_uuid',
+        'users.first_name',
+        'users.last_name',
+        'users.email'
+      )
+      .orderBy('users.last_name', 'asc')
+      .orderBy('users.first_name', 'asc');
+
+    const engagementMetrics = [];
+
+    for (const student of students) {
+      // Check if student is engaged (activity in last week)
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const recentActivity = await this.db('feedback')
+        .join('checkpoints', 'feedback.classroom_uuid', 'checkpoints.classroom_uuid')
+        .where({
+          'feedback.student_uuid': student.user_uuid,
+          'feedback.classroom_uuid': classroomUuid
+        })
+        .where('feedback.created_at', '>=', oneWeekAgo)
+        .count('* as count')
+        .first();
+
+      const recentFeedbackRequests = await this.db('feedback_requests')
+        .where({
+          'student_uuid': student.user_uuid,
+          'classroom_uuid': classroomUuid
+        })
+        .where('created_at', '>=', oneWeekAgo)
+        .count('* as count')
+        .first();
+
+      const isEngaged = (parseInt(recentActivity.count) + parseInt(recentFeedbackRequests.count)) > 0;
+
+      // Get current checkpoint (highest order_index reached)
+      const currentCheckpoint = await this.db('student_checkpoints')
+        .join('checkpoints', 'student_checkpoints.checkpoint_uuid', 'checkpoints.uuid')
+        .where({
+          'student_checkpoints.student_uuid': student.user_uuid,
+          'checkpoints.classroom_uuid': classroomUuid
+        })
+        .select(
+          'checkpoints.name as checkpoint_name',
+          'checkpoints.order_index'
+        )
+        .orderBy('checkpoints.order_index', 'desc')
+        .first();
+
+      // Calculate student reactivity (average time to respond to feedback requests)
+      const feedbackRequestResponses = await this.db('feedback_requests')
+        .leftJoin('feedback', function() {
+          this.on('feedback_requests.student_uuid', '=', 'feedback.student_uuid')
+            .andOn('feedback_requests.classroom_uuid', '=', 'feedback.classroom_uuid')
+            .andOn('feedback.created_at', '>', 'feedback_requests.created_at');
+        })
+        .where({
+          'feedback_requests.student_uuid': student.user_uuid,
+          'feedback_requests.classroom_uuid': classroomUuid,
+          'feedback_requests.resolved': true
+        })
+        .select(
+          'feedback_requests.created_at as request_time',
+          'feedback.created_at as response_time'
+        )
+        .orderBy('feedback_requests.created_at', 'desc')
+        .limit(10);
+
+      let reactivityScore = 0;
+      if (feedbackRequestResponses.length > 0) {
+        const responseTimes = feedbackRequestResponses
+          .filter(fr => fr.response_time)
+          .map(fr => {
+            const requestTime = new Date(fr.request_time);
+            const responseTime = new Date(fr.response_time);
+            return (responseTime - requestTime) / (1000 * 60 * 60); // hours
+          });
+
+        if (responseTimes.length > 0) {
+          const avgResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+          // Convert to score: faster response = higher score (0-100)
+          reactivityScore = Math.max(0, Math.min(100, 100 - (avgResponseTime / 24) * 100));
+        }
+      }
+
+      // Calculate student dedication (based on feedback content length and elaboration)
+      const feedbackContent = await this.db('feedback')
+        .where({
+          'student_uuid': student.user_uuid,
+          'classroom_uuid': classroomUuid
+        })
+        .select('content');
+
+      let dedicationScore = 0;
+      if (feedbackContent.length > 0) {
+        const totalLength = feedbackContent.reduce((sum, fb) => sum + fb.content.length, 0);
+        const avgLength = totalLength / feedbackContent.length;
+        
+        // Score based on average content length
+        // < 50 chars = 0 points, 50-100 = 25 points, 100-200 = 50 points, 200-500 = 75 points, >500 = 100 points
+        if (avgLength < 50) dedicationScore = 0;
+        else if (avgLength < 100) dedicationScore = 25;
+        else if (avgLength < 200) dedicationScore = 50;
+        else if (avgLength < 500) dedicationScore = 75;
+        else dedicationScore = 100;
+      }
+
+      // Calculate overall engagement score (0-100)
+      const engagementScore = (
+        (isEngaged ? 30 : 0) + // 30% for recent activity
+        (currentCheckpoint ? (currentCheckpoint.order_index * 10) : 0) + // 20% for checkpoint progress
+        (reactivityScore * 0.3) + // 30% for reactivity
+        (dedicationScore * 0.2) // 20% for dedication
+      );
+
+      engagementMetrics.push({
+        student_uuid: student.user_uuid,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        email: student.email,
+        is_engaged: isEngaged,
+        current_checkpoint: currentCheckpoint ? currentCheckpoint.checkpoint_name : 'No checkpoints reached',
+        current_checkpoint_order: currentCheckpoint ? currentCheckpoint.order_index : 0,
+        reactivity_score: Math.round(reactivityScore),
+        dedication_score: Math.round(dedicationScore),
+        engagement_score: Math.round(engagementScore)
+      });
+    }
+
+    // Sort by engagement score (lowest first)
+    return engagementMetrics.sort((a, b) => a.engagement_score - b.engagement_score);
+  }
 }
 
 module.exports = ClassroomRepository;

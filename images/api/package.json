@@ -7,9 +7,13 @@
     "prod": "npm run migrate && node src/index.js",
     "start": "npm run migrate && nodemon --legacy-watch src/index.js",
     "migrate": "knex migrate:latest --cwd src/db",
+    "seed": "node seed.js",
+    "seed:test": "node seed.js quick",
+    "seed:full": "node seed.js test",
     "test-watch": "jest --watchAll --detectOpenHandles",
     "test-ci": "jest --ci --detectOpenHandles --forceExit",
     "dev": "npm run migrate && nodemon src/index.js"
+    
   },
   "author": "",
   "license": "ISC",

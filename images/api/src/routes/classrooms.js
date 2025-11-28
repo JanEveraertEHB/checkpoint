@@ -467,4 +467,183 @@ router.post(
   })
 );
 
+/**
+ * @route GET /classrooms/:uuid/metrics
+ * @description Get comprehensive classroom metrics
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Comprehensive metrics object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const metrics = await classroomService.getClassroomMetrics(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json(metrics);
+  })
+);
+
+/**
+ * @route GET /classrooms/:uuid/metrics/basic
+ * @description Get basic classroom metrics
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Basic metrics object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics/basic',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const metrics = await classroomService.getBasicMetrics(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...metrics
+    });
+  })
+);
+
+/**
+ * @route GET /classrooms/:uuid/metrics/progress
+ * @description Get progress metrics for a classroom
+ * @access Protected
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Object} Progress metrics object
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Not a member of this classroom
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics/progress',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const metrics = await classroomService.getProgressMetrics(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...metrics
+    });
+  })
+);
+
+
+
+/**
+ * @route GET /classrooms/:uuid/metrics/students
+ * @description Get student progress summary (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Array<Object>} Array of student progress objects
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can view student progress summary
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics/students',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const studentProgress = await classroomService.getStudentProgressSummary(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      students: studentProgress
+    });
+  })
+);
+
+/**
+ * @route GET /classrooms/:uuid/metrics/checkpoints
+ * @description Get checkpoint completion distribution (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Array<Object>} Array of checkpoint completion objects
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can view checkpoint completion distribution
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics/checkpoints',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const checkpointDistribution = await classroomService.getCheckpointCompletionDistribution(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      checkpoints: checkpointDistribution
+    });
+  })
+);
+
+/**
+ * @route GET /classrooms/:uuid/metrics/engagement
+ * @description Get detailed student engagement metrics (teacher only)
+ * @access Protected (Teacher only)
+ * @headers {string} Authorization - Bearer token
+ * @param {string} uuid - Classroom UUID
+ * @returns {Array<Object>} Array of student engagement objects sorted by engagement score
+ * @throws {AuthenticationError} 401 - Invalid or missing token
+ * @throws {ValidationError} 400 - Invalid UUID format
+ * @throws {AuthorizationError} 403 - Only teachers can view student engagement metrics
+ * @throws {NotFoundError} 404 - Classroom not found
+ */
+router.get(
+  '/:uuid/metrics/engagement',
+  decodeToken,
+  validateUUID('uuid'),
+  asyncHandler(async (req, res) => {
+    const classroomService = container.get('classroomService');
+    const classroomUuid = req.params.uuid;
+    const userUuid = req.user.uuid;
+
+    const engagementMetrics = await classroomService.getStudentEngagementMetrics(classroomUuid, userUuid);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      students: engagementMetrics
+    });
+  })
+);
+
 module.exports = router;
