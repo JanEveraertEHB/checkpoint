@@ -33,7 +33,6 @@ export default function StudentEngagementTable({ classroomUuid }: StudentEngagem
     
     try {
       const response = await getStudentEngagementMetrics(classroomUuid)
-      console.log(response.data)
       setStudents(response.data.students)
     } catch (err) {
       console.error('Error fetching engagement metrics:', err)
@@ -105,11 +104,10 @@ export default function StudentEngagementTable({ classroomUuid }: StudentEngagem
               <th>Reactivity</th>
               <th>Dedication</th>
               <th>Overall Score</th>
-              <th>Priority</th>
             </tr>
           </thead>
           <tbody>
-            {students && students.map((student, index) => (
+            {students && students.map((student) => (
               <tr key={student.student_uuid} style={{
                 backgroundColor: student.engagement_score < 40 ? '#fff5f5' : 
                                student.engagement_score < 60 ? '#fffbf0' : 'transparent'
@@ -124,17 +122,17 @@ export default function StudentEngagementTable({ classroomUuid }: StudentEngagem
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   {student.is_engaged ? (
-                    <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓ Active</span>
+                    <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓</span>
                   ) : (
-                    <span style={{ color: '#dc3545' }}>✗ Inactive</span>
+                    <span style={{ color: '#dc3545' }}>✗</span>
                   )}
                 </td>
                 <td>
                   <div>
-                    <strong>{student.current_checkpoint}</strong>
+                    <strong style={{float: "left", marginRight: "10px"}}>{student.current_checkpoint_order}</strong>
                     {student.current_checkpoint_order > 0 && (
-                      <div style={{ fontSize: '12px', color: '#6c757d' }}>
-                        Level {student.current_checkpoint_order}
+                      <div style={{ fontSize: '12px', color: '#6c757d', float: "left", marginTop: "3px"}}>
+                        {student.current_checkpoint}
                       </div>
                     )}
                   </div>
@@ -178,54 +176,20 @@ export default function StudentEngagementTable({ classroomUuid }: StudentEngagem
                 <td style={{ textAlign: 'center' }}>
                   <div style={{
                     display: 'inline-block',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
                     backgroundColor: getEngagementColor(student.engagement_score),
                     color: 'white',
                     fontWeight: 'bold',
-                    fontSize: '16px',
-                    minWidth: '60px'
+                    minWidth: '50px'
                   }}>
                     {student.engagement_score}
                   </div>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {student.engagement_score < 40 && (
-                    <span style={{ 
-                      color: '#dc3545', 
-                      fontWeight: 'bold',
-                      backgroundColor: '#fff5f5',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #f5c6cb'
-                    }}>
-                      HIGH PRIORITY
-                    </span>
-                  )}
-                  {student.engagement_score >= 40 && student.engagement_score < 60 && (
-                    <span style={{ 
-                      color: '#fd7e14', 
-                      fontWeight: 'bold',
-                      backgroundColor: '#fffbf0',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #ffeaa7'
-                    }}>
-                      MEDIUM
-                    </span>
-                  )}
-                  {student.engagement_score >= 60 && (
-                    <span style={{ 
-                      color: '#28a745', 
-                      fontWeight: 'bold',
-                      backgroundColor: '#f0fff4',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #9ae6b4'
-                    }}>
-                      GOOD
-                    </span>
-                  )}
+                  <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '2px' }}>
+                    {student.engagement_score >= 75 ? 'High' :
+                     student.engagement_score >= 50 ? 'Medium' :
+                     student.engagement_score >= 25 ? 'Low' : 'Worrying'}
+                  </div>
                 </td>
               </tr>
             ))}
